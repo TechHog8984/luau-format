@@ -1,0 +1,10 @@
+-std=c++17
+
+-Iinclude
+-Itests
+-Idependencies/Luau/Analysis/include
+-Idependencies/Luau/Ast/include
+-Idependencies/Luau/Common/include
+-Idependencies/Luau/Config/include
+-Idependencies/Luau/VM/src
+-Idependencies/Luau/VM/include
