@@ -9,6 +9,8 @@
 After running, the formatted code will be in stdout, or the output file passed through --output=[file]. Any errors/warnings will be in stderr.
 Run `luau-format` without any arguments to get a help message.
 
+# NOTE: lph_control_flow does not work and it was not supposed to be made public
+
 ## build
 `luau-format` can be built through a bash script:
 ```sh
