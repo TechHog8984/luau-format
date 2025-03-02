@@ -176,10 +176,16 @@ int main(int argc, char** argv) {
         }
     }
 
-    if (sep_stat)
-        sep_stat = parseSeparator(sep_stat).c_str();
-    if (sep_block)
-        sep_block = parseSeparator(sep_block).c_str();
+    if (sep_stat) {
+        std::string temp = parseSeparator(sep_stat);
+        sep_stat = static_cast<const char*>(malloc(sizeof(temp)));
+        strcpy(const_cast<char*>(sep_stat), temp.c_str());
+    }
+    if (sep_block) {
+        std::string temp = parseSeparator(sep_block);
+        sep_block = static_cast<const char*>(malloc(sizeof(temp)));
+        strcpy(const_cast<char*>(sep_block), temp.c_str());
+    }
 
     int ret = 1;
 
@@ -230,6 +236,11 @@ int main(int argc, char** argv) {
 RET:
     if (output_path)
         fclose(output_file);
+
+    if (sep_stat)
+        free((void*) sep_stat);
+    if (sep_block)
+        free((void*) sep_block);
 
     return ret;
 }
