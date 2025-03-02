@@ -50,7 +50,7 @@ PASSED 5/5 TESTS
 
 ## TODO
 * file with all sorts of ast/expr combinations. beautify twicefold and check contents + output. this will ensure the output can be parsed. (refer to test.hpp for more information)
-* tests for `AstFormatter`
+* tests for `AstFormatter` & complete simplifier tests
 * the current simplifying&formatting setup does not handle ExprGroups appropriately (sometimes parenthesis are needed)
 * explore if the lexer will allow us to preserve whitespace. if so, use for certain characters (like single/double newlines)
 * all functions declared should belong to a class (make 'extra' functions static members of its file's class)
