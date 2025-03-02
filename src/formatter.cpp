@@ -19,9 +19,11 @@ AstStatBlock* combineBlocks(Allocator& allocator, std::vector<AstStatBlock*> blo
     return allocator.alloc<AstStatBlock>(Location(), copy(allocator, body.data(), body.size()));
 }
 
-AstFormatter::FormatOptions::FormatOptions(OutputType output_type, bool simplify_expressions, bool lua_calls, bool record_table_replace, bool list_table_replace, bool lph_control_flow) :
+AstFormatter::FormatOptions::FormatOptions(OutputType output_type, bool simplify_expressions,
+    bool lua_calls, bool record_table_replace, bool list_table_replace, bool lph_control_flow,
+    const char* separator_stat, const char* separator_block) :
     output_type(output_type), simplify_expressions(simplify_expressions), lua_calls(lua_calls), record_table_replace(record_table_replace),
-    list_table_replace(list_table_replace), lph_control_flow(lph_control_flow) {}
+    list_table_replace(list_table_replace), lph_control_flow(lph_control_flow), separator_stat(separator_stat), separator_block(separator_block) {}
 
 AstFormatter::AstFormatter(Allocator& allocator, AstSimplifier& simplifier, FormatOptions options) :
     allocator(allocator), simplifier(simplifier), options(options)
@@ -34,6 +36,7 @@ AstFormatter::AstFormatter(Allocator& allocator, AstSimplifier& simplifier, Form
             separators.optional_newline = "\n";
             separators.post_keyword_expr_open = separators.optional_space;
             separators.post_keyword_expr_close = separators.post_keyword_expr_open;
+            separators.optional_post_keyword_expr_close = "";
             separators.expr_list = ", ";
             separators.table_item = ",\n";
             separators.equals = " = ";
@@ -49,16 +52,25 @@ AstFormatter::AstFormatter(Allocator& allocator, AstSimplifier& simplifier, Form
             separators.optional_newline = "";
             separators.post_keyword_expr_open = "(";
             separators.post_keyword_expr_close = ")";
+            separators.optional_post_keyword_expr_close = separators.post_keyword_expr_open;
             separators.expr_list = ",";
             separators.table_item = separators.expr_list;
             separators.equals = "=";
             break;
     }
 
-    separators.stat_is_semicolon = strcmp(separators.stat, ";") == 0;
+    setSeparatorStat(options.separator_stat ? options.separator_stat : separators.stat);
 
-    if (strlen(separators.stat) > 1) {
-        fprintf(stderr, "[ERROR] separators.stat needs to be one character for appendOptionalSemicolon");
+    if (options.separator_block)
+        separators.block = options.separator_block;
+}
+
+void AstFormatter::setSeparatorStat(const char* sep) {
+    separators.stat = sep;
+    separators.stat_has_semicolon = strstr(sep, ";") != NULL;
+
+    if (!separators.stat_has_semicolon && strlen(sep) > 1) {
+        fputs("[ERROR] separators.stat needs to be one character (or have a semicolon) for appendOptionalSemicolon\n", stderr);
         exit(1);
     }
 }
@@ -289,10 +301,11 @@ size_t rewindPastFirstSpace(std::string& string, bool include_newlines = false) 
     return std::string::npos;
 }
 size_t AstFormatter::appendOptionalSemicolon(std::string& current, std::string& result) {
-    // bool last_char_is_parenthesis = current.empty() ? false : (current.at(rewindPastFirstSpace(current)) == ')');
-    // if (!separators.stat_is_semicolon && last_char_is_parenthesis) {
+    if (separators.stat_has_semicolon)
+        return std::string::npos;
+
     bool is_at_beginning_of_line = current.empty() ? true : (current.at(rewindPastFirstSpace(current, true)) == separators.stat[0]);
-    if (!separators.stat_is_semicolon && is_at_beginning_of_line) {
+    if (is_at_beginning_of_line) {
         size_t pos = result.size();
         appendChar(result, ';');
         return pos;
@@ -475,7 +488,9 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
                 appendStr(result, separators.stat);
                 is_first = false;
             }
-            erase(result, result.size() - strlen(separators.stat), strlen(separators.stat));
+            size_t sep_stat_length = strlen(separators.stat);
+            if (separators.stat[sep_stat_length - 1] == '\n')
+                erase(result, result.size() - 1, 1);
         }
 
         if (old_do_end) {
@@ -546,7 +561,7 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
 
         appendStr(result, std::string("until").append(separators.post_keyword_expr_open));
         appendNode(main_stat_as_repeat->condition, "stat_repeat->condition")
-        appendStr(result, separators.post_keyword_expr_close);
+        appendStr(result, separators.optional_post_keyword_expr_close);
     } else if (main_stat->is<AstStatBreak>()) {
         appendStr(result, "break");
     } else if (main_stat->is<AstStatContinue>()) {

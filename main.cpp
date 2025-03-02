@@ -48,6 +48,70 @@ int tryFormatContents(Allocator& allocator, AstFormatter::FormatOptions format_o
     return 1;
 }
 
+int handleRecordOption(const char* option, const char*& arg, bool can_be_empty = false) {
+    size_t option_length = strlen(option);
+
+    if (strncmp(arg, option, option_length) != 0)
+        return 1;
+
+    if (strlen(arg) == option_length || arg[option_length] != '=') {
+        fprintf(stderr, "ERROR: %s expects an equals sign\n", option);
+        return 1;
+    } else if (!can_be_empty && strlen(arg) < option_length + 2) {
+        fprintf(stderr, "ERROR: %s expects a value after the equals sign\n", option);
+        return 1;
+    }
+
+    arg += option_length + 1;
+    return 0;
+}
+std::string parseSeparator(const char*& sep) {
+    std::string result;
+
+    for (size_t i = 0; i < strlen(sep); i++) {
+        char ch = sep[i];
+        if (ch == '\\') {
+            i++;
+            if (i >= strlen(sep))
+                break;
+            ch = sep[i];
+
+            switch (ch) {
+                case 'a':
+                    ch = '\a';
+                    break;
+                case 'b':
+                    ch = '\b';
+                    break;
+                case 'f':
+                    ch = '\f';
+                    break;
+                case 'n':
+                    ch = '\n';
+                    break;
+                case 'r':
+                    ch = '\r';
+                    break;
+                case 't':
+                    ch = '\t';
+                    break;
+                case 'v':
+                    ch = '\v';
+                    break;
+                case '\\':
+                    ch = '\\';
+                    break;
+                default:
+                    result.push_back('\\');
+                    break;
+            }
+        }
+        result.push_back(ch);
+    }
+
+    return result;
+}
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         if (argc == 1) displayHelp(argv[0]);
@@ -67,17 +131,22 @@ int main(int argc, char** argv) {
     const char* input_path = argv[1];
     const char* output_path = nullptr;
 
+    const char* sep_stat = nullptr;
+    const char* sep_block = nullptr;
+
     for (unsigned i = 2; i < (unsigned) argc; i++) {
         const char* arg = argv[i];
-        if (strncmp(arg, "--output", 8) == 0) {
-            if (strlen(arg) == 8 || arg[8] != '=') {
-                fprintf(stderr, "ERROR: --output expects an equals sign\n");
-                return 1;
-            } else if (strlen(arg) < 10) {
-                fprintf(stderr, "ERROR: --output expects a file path after the equals sign\n");
-                return 1;
-            }
-            arg += 9;
+        // if (strncmp(arg, "--output", 8) == 0) {
+        //     if (strlen(arg) == 8 || arg[8] != '=') {
+        //         fprintf(stderr, "ERROR: --output expects an equals sign\n");
+        //         return 1;
+        //     } else if (strlen(arg) < 10) {
+        //         fprintf(stderr, "ERROR: --output expects a file path after the equals sign\n");
+        //         return 1;
+        //     }
+        //     arg += 9;
+        //     output_path = arg;
+        if (!handleRecordOption("--output", arg)) {
             output_path = arg;
         } else if (strcmp(arg, "--nosolve") == 0 || strcmp(arg, "--nosimplify") == 0) {
             no_simplify = true;
@@ -85,6 +154,10 @@ int main(int argc, char** argv) {
             output_type = AstFormatter::FormatOptions::Minified;
         } else if (strcmp(arg, "--lua_calls") == 0) {
             lua_calls = true;
+        } else if (!handleRecordOption("--sep_stat", arg, true)) {
+            sep_stat = arg;
+        } else if (!handleRecordOption("--sep_block", arg, true)) {
+            sep_block = arg;
 
         } else if (strcmp(arg, "--luraph") == 0) {
             solve_record_table = true;
@@ -102,6 +175,11 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+
+    if (sep_stat)
+        sep_stat = parseSeparator(sep_stat).c_str();
+    if (sep_block)
+        sep_block = parseSeparator(sep_block).c_str();
 
     int ret = 1;
 
@@ -131,7 +209,8 @@ int main(int argc, char** argv) {
         AstFormatter::FormatOptions format_options(
             output_type,
             !no_simplify, lua_calls,
-            solve_record_table, solve_list_table, lph_control_flow
+            solve_record_table, solve_list_table, lph_control_flow,
+            sep_stat, sep_block
         );
         ret = tryFormatContents(
             allocator,

@@ -60,16 +60,19 @@ class AstFormatter {
     void insertEnd(std::string& result, const char* begin, const char* end);
 
     struct separators_t {
-        const char* stat = "UNSET SEPARATOR stat"; bool stat_is_semicolon = false;
+        const char* stat = "UNSET SEPARATOR stat"; bool stat_has_semicolon = false;
         const char* block = "UNSET SEPARATOR block";
         const char* optional_space = "UNSET SEPARATOR optional_space";
         const char* optional_newline = "UNSET SEPARATOR optional_newline";
         const char* post_keyword_expr_open = "UNSET SEPARATOR post_keyword_expr_open";
         const char* post_keyword_expr_close = "UNSET SEPARATOR post_keyword_expr_close";
+        const char* optional_post_keyword_expr_close = "UNSET SEPARATOR optional_post_keyword_expr_close";
         const char* expr_list = "UNSET SEPARATOR expr_list";
         const char* table_item = "UNSET SEPARATOR table_item";
         const char* equals = "UNSET SEPARATOR equals";
     } separators;
+
+    void setSeparatorStat(const char* sep);
 
     bool do_end = true;
     bool indents_active = true;
@@ -111,7 +114,15 @@ public:
         bool list_table_replace;
         bool lph_control_flow;
 
-        FormatOptions(OutputType output_type = Beautified, bool simplify_expressions = true, bool lua_calls = false, bool record_table_replace = false, bool list_table_replace = false, bool lph_control_flow = false);
+        const char* separator_stat;
+        const char* separator_block;
+
+        FormatOptions(
+            OutputType output_type = Beautified, bool simplify_expressions = true,
+            bool lua_calls = false, bool record_table_replace = false,
+            bool list_table_replace = false, bool lph_control_flow = false,
+            const char* separator_stat = nullptr, const char* separator_block = nullptr
+        );
     };
 
     class FormatResult {
