@@ -297,7 +297,7 @@ std::optional<Condition> Condition::tryCreateCondition(AstSimplifier& simplifier
 
     if (!(result.op == AstExprBinary::CompareNe or result.op == AstExprBinary::CompareEq or result.op == AstExprBinary::CompareLt
         or result.op == AstExprBinary::CompareLe or result.op == AstExprBinary::CompareGt or result.op == AstExprBinary::CompareGe
-    )) 
+    ))
         return std::nullopt;
 
     auto left = simplifier.simplify(expr_binary->left);
@@ -1217,6 +1217,26 @@ RET:
     return std::nullopt;
 }
 
+std::optional<AstExprBinary::Op> inverseBinaryOp(AstExprBinary::Op op) {
+    switch (op) {
+        case AstExprBinary::CompareNe:
+            return AstExprBinary::CompareEq;
+        case AstExprBinary::CompareEq:
+            return AstExprBinary::CompareNe;
+        case AstExprBinary::CompareLt:
+            return AstExprBinary::CompareGe;
+        case AstExprBinary::CompareLe:
+            return AstExprBinary::CompareGt;
+        case AstExprBinary::CompareGt:
+            return AstExprBinary::CompareLe;
+        case AstExprBinary::CompareGe:
+            return AstExprBinary::CompareLt;
+        default:
+            break;
+    }
+    return std::nullopt;
+}
+
 AstSimplifier::SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* hook_data) {
     // TODO: maybe this should be a pointer passed to getrootexpr that will become true if it encounters a group, instead of just checking if the outermost expr is group
     bool group = expr->is<AstExprGroup>();
@@ -1258,11 +1278,19 @@ AstSimplifier::SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHoo
                     case SimplifyResult::Number:
                     case SimplifyResult::String:
                         return SimplifyResult(this, false, group);
-                    case SimplifyResult::Other:
+                    case SimplifyResult::Other: {
                         auto is_truthy = isExpressionTruthy(expr_simplified.other_value);
                         if (is_truthy < 2)
                             return SimplifyResult(this, !is_truthy, group);
+                        else if (auto expr_binary = expr_simplified.toExpr()->as<AstExprBinary>()) {
+                            auto new_op = inverseBinaryOp(expr_binary->op);
+                            if (!new_op)
+                                goto UNARY_OTHER_CASE_EXIT;
+                            return SimplifyResult(this, allocator.alloc<AstExprBinary>(expr_binary->location, new_op.value(), expr_binary->left, expr_binary->right));
+                        }
+                    UNARY_OTHER_CASE_EXIT:
                         break;
+                    }
                 }
                 break;
             }

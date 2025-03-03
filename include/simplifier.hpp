@@ -70,6 +70,9 @@ public:
     AstLocal* getLocal() {
         return local;
     }
+    double getNumber() {
+        return number;
+    }
 
     // TODO: uint8_t behaviour similar to equality?
     bool passes(double input);
