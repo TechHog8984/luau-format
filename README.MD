@@ -45,6 +45,7 @@ PASSED 5/5 TESTS
 * binary and (example: `false and true` -> false; `123 and true` -> true; `true and 123` -> 123)
 * binary or (example: `true or false` -> true; `false or false` -> false; `false or 321` -> 321)
 * unary not on a binary (example: `not (a == 4)` -> `a ~= 4`; `not (a > 4)` -> `a <= 4`)
+* repeat [body] until true (example: `repeat a += 1 until 1 == 1` -> `a += 1`; implemented in formatter, but only in use when simplifier is enabled)
 * more...
 
 [^1]: <small> not necessarily noticable unless working with the AST (for example, `-100` goes from `ExprUnary(Minus, ExprConstantNumber(100))` to `ExprConstantNumber(-100)`) and therefore there is a lack of examples </small>
