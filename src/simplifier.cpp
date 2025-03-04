@@ -1246,6 +1246,9 @@ AstSimplifier::SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHoo
 
     expr = getRootExpr(expr, safe);
 
+    if (expr->is<AstExprGlobal>() || expr->is<AstExprLocal>())
+        group = false;
+
     if (hook) {
         auto result = hook(this, allocator, expr, group, hook_data);
         if (result)

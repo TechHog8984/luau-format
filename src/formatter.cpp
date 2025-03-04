@@ -549,19 +549,27 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         appendIndents(result);
         appendStr(result, "end");
     } else if (auto main_stat_as_repeat = main_stat->as<AstStatRepeat>()) {
-        appendStr(result, std::string("repeat").append(separators.block));
+        auto repeat_body = main_stat_as_repeat->body;
+        auto repeat_condition = main_stat_as_repeat->condition;
+        auto repeat_condition_simplified = simplifier.simplify(repeat_condition);
+        if (!simplifier.disabled && repeat_condition_simplified.type == AstSimplifier::SimplifyResult::Bool && repeat_condition_simplified.bool_value) {
+            do_end = false;
+            appendNode(repeat_body, "stat_repeat simplified body");
+        } else {
+            appendStr(result, std::string("repeat").append(separators.block));
 
-        do_end = false;
-        incrementIndent();
-            appendNode(main_stat_as_repeat->body, "stat_repeat->body")
-        decrementIndent();
+            do_end = false;
+            incrementIndent();
+                appendNode(repeat_body, "stat_repeat->body")
+            decrementIndent();
 
-        appendStr(result, separators.block);
-        appendIndents(result);
+            appendStr(result, separators.block);
+            appendIndents(result);
 
-        appendStr(result, std::string("until").append(separators.post_keyword_expr_open));
-        appendNode(main_stat_as_repeat->condition, "stat_repeat->condition")
-        appendStr(result, separators.optional_post_keyword_expr_close);
+            appendStr(result, std::string("until").append(separators.post_keyword_expr_open));
+            appendNode(repeat_condition, "stat_repeat->condition")
+            appendStr(result, separators.optional_post_keyword_expr_close);
+        }
     } else if (main_stat->is<AstStatBreak>()) {
         appendStr(result, "break");
     } else if (main_stat->is<AstStatContinue>()) {
