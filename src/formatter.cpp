@@ -195,6 +195,8 @@ void AstFormatter::appendIndents(std::string& result) {
         skip_indent = false;
         return;
     }
+    if (!indent_count)
+        return;
 
     size_t to_reserve = result.size() + indent_count * 4;
     result.reserve(to_reserve);
@@ -212,7 +214,8 @@ void AstFormatter::decrementIndent() {
     if (!indents_active)
         return;
 
-    indent_count--;
+    if (indent_count)
+        indent_count--;
 }
 
 void AstFormatter::appendComment(std::string& result, const char* comment, bool force) {
@@ -554,6 +557,7 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         auto repeat_condition_simplified = simplifier.simplify(repeat_condition);
         if (!simplifier.disabled && repeat_condition_simplified.type == AstSimplifier::SimplifyResult::Bool && repeat_condition_simplified.bool_value) {
             do_end = false;
+            skip_indent = true; // below AstStatBlock pushes indent for first stat
             appendNode(repeat_body, "stat_repeat simplified body");
         } else {
             appendStr(result, std::string("repeat").append(separators.block));
