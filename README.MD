@@ -11,6 +11,9 @@ Run `luau-format` without any arguments to get a help message.
 
 # NOTE: lph_control_flow does not work and it was not supposed to be made public
 
+## download
+If you do not wish to build `luau-format` through the below instructions, you can find binaries (windows & linux x86_64) in the [latest release](https://github.com/TechHog8984/luau-format/releases/latest)
+
 ## build
 `luau-format` can be built through a bash script:
 ```sh
