@@ -753,9 +753,19 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         appendStr(result, separators.optional_space);
         appendNode(main_stat_as_compound_assign->value, "compount_assign->value")
     } else if (auto main_stat_as_function = main_stat->as<AstStatFunction>()) {
-        appendNode(main_stat_as_function->name, "function->name")
-        appendStr(result, separators.equals);
-        appendNode(main_stat_as_function->func, "function->func")
+        auto name = main_stat_as_function->name;
+        auto func = main_stat_as_function->func;
+        auto name_as_index_name = name->as<AstExprIndexName>();
+        bool is_namecall = name_as_index_name == nullptr ? false : name_as_index_name->op == ':';
+        if (is_namecall) {
+            appendStr(result, "function ");
+            appendNode(name, "function->name")
+            appendFunctionBody(func, "function->func")
+        } else {
+            appendNode(name, "function->name")
+            appendStr(result, separators.equals);
+            appendNode(func, "function->func")
+        }
     } else if (auto main_stat_as_local_function = main_stat->as<AstStatLocalFunction>()) {
         appendStr(result, std::string("local function ")
             .append(main_stat_as_local_function->name->name.value));
