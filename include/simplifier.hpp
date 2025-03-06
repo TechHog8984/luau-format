@@ -137,6 +137,37 @@ public:
     bool visit(AstStatBlock* root_block) override;
 };
 
+class SimplifyResult {
+    AstSimplifier* simplifier;
+public:
+    // NOTE: when adding a new type, remember that simplifying a Binary NE or EQ takes this into account
+    enum Type {
+        // simple types
+        Nil,
+        Bool,
+        Number,
+        String,
+        // other type
+        Other
+    } type;
+    AstExprConstantNil* nil_value;
+    bool bool_value;
+    double number_value;
+    AstArray<char> string_value;
+    AstExpr* other_value;
+
+    bool group;
+
+    SimplifyResult(AstSimplifier* simplifier, AstExprConstantNil* nil_value, bool group = false);
+    SimplifyResult(AstSimplifier* simplifier, bool bool_value, bool group = false);
+    SimplifyResult(AstSimplifier* simplifier, double number_value, bool group = false);
+    SimplifyResult(AstSimplifier* simplifier, AstArray<char> string_value, bool group = false);
+    SimplifyResult(AstSimplifier* simplifier, AstExpr* other_value, bool group = false);
+
+    AstExpr* toExpr();
+    std::optional<double> asNumber();
+    std::optional<AstArray<char>> asString();
+};
 
 class AstSimplifier {
     Allocator& allocator;
@@ -156,37 +187,6 @@ public:
     RecordTableReplaceVisitor* record_table_replace_visitor = nullptr;
     ListTableReplaceVisitor* list_table_replace_visitor = nullptr;
     LPHControlFlowVisitor* lph_control_flow_visitor = nullptr;
-    class SimplifyResult {
-        AstSimplifier* simplifier;
-    public:
-        // NOTE: when adding a new type, remember that simplifying a Binary NE or EQ takes this into account
-        enum Type {
-            // simple types
-            Nil,
-            Bool,
-            Number,
-            String,
-            // other type
-            Other
-        } type;
-        AstExprConstantNil* nil_value;
-        bool bool_value;
-        double number_value;
-        AstArray<char> string_value;
-        AstExpr* other_value;
-
-        bool group;
-
-        SimplifyResult(AstSimplifier* simplifier, AstExprConstantNil* nil_value, bool group = false);
-        SimplifyResult(AstSimplifier* simplifier, bool bool_value, bool group = false);
-        SimplifyResult(AstSimplifier* simplifier, double number_value, bool group = false);
-        SimplifyResult(AstSimplifier* simplifier, AstArray<char> string_value, bool group = false);
-        SimplifyResult(AstSimplifier* simplifier, AstExpr* other_value, bool group = false);
-
-        AstExpr* toExpr();
-        std::optional<double> asNumber();
-        std::optional<AstArray<char>> asString();
-    };
 
     AstSimplifier(Allocator& allocator, bool safe = true, bool disabled = false, bool simplify_lua_calls = false);
 
@@ -195,10 +195,12 @@ public:
     SimplifyResult simplify(AstExpr* expr, simplifyHook hook = nullptr, void* hook_data = nullptr);
     AstExpr* simplifyToExpr(AstExpr* expr, simplifyHook hook = nullptr, void* hook_data = nullptr);
 
+    Allocator& getAllocator();
+
 private:
     std::optional<double> callLuaFunction(AstArray<AstExpr*> args, const char* global, const char* global_index = nullptr, simplifyHook hook = nullptr, void* hook_data = nullptr);
     std::optional<SimplifyResult> tryReplaceLuaCall(AstExprCall* expr_call, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
 
-    std::optional<AstSimplifier::SimplifyResult> tryReplaceRecordTableIndex(AstExprIndexName* expr_index_name, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
-    std::optional<AstSimplifier::SimplifyResult> tryReplaceListTableIndex(AstExprIndexExpr* expr_index_expr, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
+    std::optional<SimplifyResult> tryReplaceRecordTableIndex(AstExprIndexName* expr_index_name, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
+    std::optional<SimplifyResult> tryReplaceListTableIndex(AstExprIndexExpr* expr_index_expr, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
 };

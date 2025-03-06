@@ -13,7 +13,7 @@
 #include "lualib.h"
 
 #define safeSetExpr(value) { \
-    auto _expr = value; \
+    auto& _expr = value; \
     if (_expr->is<AstExprFunction>() || _expr->is<AstExprVarargs>()) \
         return expr; \
     expr = _expr; \
@@ -237,8 +237,8 @@ uint8_t binaryCompareString_ge(const AstArray<char> left, const AstArray<char> r
 
 std::optional<SimpleAssign> getSimpleAssign(AstStat* stat, bool can_have_no_values) {
     if (auto stat_as_assign = stat->as<AstStatAssign>()) {
-        auto var_list = stat_as_assign->vars;
-        auto value_list = stat_as_assign->values;
+        auto& var_list = stat_as_assign->vars;
+        auto& value_list = stat_as_assign->values;
 
         bool has_value = false;
         if (var_list.size != 1)
@@ -262,8 +262,8 @@ std::optional<SimpleAssign> getSimpleAssign(AstStat* stat, bool can_have_no_valu
             .value = has_value ? value_list.data[0] : nullptr
         };
     } else if (auto stat_as_local = stat->as<AstStatLocal>()) {
-        auto var_list = stat_as_local->vars;
-        auto value_list = stat_as_local->values;
+        auto& var_list = stat_as_local->vars;
+        auto& value_list = stat_as_local->values;
 
         bool has_value = false;
         if (var_list.size != 1)
@@ -557,8 +557,8 @@ LPHControlFlowVisitor::LPHControlFlowVisitor(Allocator& allocator, AstSimplifier
 //     return;
 // }
 
-std::optional<AstSimplifier::SimplifyResult> lphControlFlowSimplifyHook(AstSimplifier* simplifier, Allocator& allocator, AstExpr* root_expr, bool group, void* data);
-std::optional<AstSimplifier::SimplifyResult> lphControlFlowSimplifyHook(AstSimplifier* simplifier, Allocator& allocator, AstExpr* root_expr, bool group, void* data) {
+std::optional<SimplifyResult> lphControlFlowSimplifyHook(AstSimplifier* simplifier, Allocator& allocator, AstExpr* root_expr, bool group, void* data);
+std::optional<SimplifyResult> lphControlFlowSimplifyHook(AstSimplifier* simplifier, Allocator& allocator, AstExpr* root_expr, bool group, void* data) {
     // puts("1");
     if (!data)
         goto RET;
@@ -601,7 +601,7 @@ std::optional<AstSimplifier::SimplifyResult> lphControlFlowSimplifyHook(AstSimpl
 
         printf("solved cftable[%.f]: %.f\n", index_as_number, visitor->cftable.at(index_as_number));
 
-        return AstSimplifier::SimplifyResult(simplifier, visitor->cftable.at(index_as_number), group);
+        return SimplifyResult(simplifier, visitor->cftable.at(index_as_number), group);
     } else if (auto expr_as_binary = root_expr->as<AstExprBinary>()) {
         AstExpr* left = expr_as_binary->left;
         AstExpr* right = expr_as_binary->right;
@@ -637,8 +637,8 @@ void LPHControlFlowVisitor::tryHandleSet_cftable(AstStat* stat) {
     if (!stat_as_assign)
         return;
 
-    auto var_list = stat_as_assign->vars;
-    auto value_list = stat_as_assign->values;
+    auto& var_list = stat_as_assign->vars;
+    auto& value_list = stat_as_assign->values;
 
     if (var_list.size != 1 || value_list.size != 1)
         return;
@@ -688,7 +688,7 @@ void LPHControlFlowVisitor::tryHandleSet_cfposition(AstStat* stat) {
 }
 
 int LPHControlFlowVisitor::handleIfBlock(AstStatBlock* main_block) {
-    auto root_block_body = main_block->body;
+    auto& root_block_body = main_block->body;
     if (root_block_body.size == 1) {
         auto inner_if = root_block_body.data[0]->as<AstStatIf>();
         if (!inner_if) goto FALLTHROUGH;
@@ -702,7 +702,7 @@ int LPHControlFlowVisitor::handleIfBlock(AstStatBlock* main_block) {
 FALLTHROUGH:
     // return mapIndexToOp(main_block);
 
-    auto main_block_body = main_block->body;
+    auto& main_block_body = main_block->body;
 
     AstStatIf* main_block_target_stat_as_if = nullptr;
     for (size_t i = main_block_body.size; i > 0;) {
@@ -798,7 +798,7 @@ ELSE_FALLTHROUGH:
 // }
 
 bool LPHControlFlowVisitor::visit(AstStatBlock* root_block) {
-    auto root_block_body = root_block->body;
+    auto& root_block_body = root_block->body;
     if (root_block_body.size < 1)
         goto RET;
 
@@ -824,7 +824,7 @@ bool LPHControlFlowVisitor::visit(AstStatBlock* root_block) {
     if (!root_func)
         goto RET;
 
-    auto root_func_body = root_func->body->body;
+    auto& root_func_body = root_func->body->body;
     if (root_func_body.size < 3)
         goto RET;
 
@@ -849,12 +849,12 @@ bool LPHControlFlowVisitor::visit(AstStatBlock* root_block) {
     if (!third_stat_as_while)
         goto RET;
 
-    auto main_while_body = third_stat_as_while->body->body;
+    auto& main_while_body = third_stat_as_while->body->body;
     if (main_while_body.size < 1)
         goto RET;
 
-    auto second_stat_var_list = second_stat_as_local->vars;
-    auto second_stat_value_list = second_stat_as_local->values;
+    auto& second_stat_var_list = second_stat_as_local->vars;
+    auto& second_stat_value_list = second_stat_as_local->values;
 
     for (size_t i = 0; i < second_stat_var_list.size; i++) {
         if (second_stat_value_list.size <= i)
@@ -899,29 +899,29 @@ RET:
     return false;
 }
 
-AstSimplifier::SimplifyResult::SimplifyResult(AstSimplifier* simplifier, AstExprConstantNil* nil_value, bool group) : simplifier(simplifier), type(Nil), nil_value(nil_value), group(group) {}
-AstSimplifier::SimplifyResult::SimplifyResult(AstSimplifier* simplifier, bool bool_value, bool group) : simplifier(simplifier), type(Bool), bool_value(bool_value), group(group) {}
-AstSimplifier::SimplifyResult::SimplifyResult(AstSimplifier* simplifier, double number_value, bool group) : simplifier(simplifier), type(Number), number_value(number_value), group(group) {}
-AstSimplifier::SimplifyResult::SimplifyResult(AstSimplifier* simplifier, AstArray<char> string_value, bool group) : simplifier(simplifier), type(String), string_value(string_value), group(group) {}
-AstSimplifier::SimplifyResult::SimplifyResult(AstSimplifier* simplifier, AstExpr* other_value, bool group) : simplifier(simplifier), type(Other), other_value(other_value), group(group) {}
+SimplifyResult::SimplifyResult(AstSimplifier* simplifier, AstExprConstantNil* nil_value, bool group) : simplifier(simplifier), type(Nil), nil_value(nil_value), group(group) {}
+SimplifyResult::SimplifyResult(AstSimplifier* simplifier, bool bool_value, bool group) : simplifier(simplifier), type(Bool), bool_value(bool_value), group(group) {}
+SimplifyResult::SimplifyResult(AstSimplifier* simplifier, double number_value, bool group) : simplifier(simplifier), type(Number), number_value(number_value), group(group) {}
+SimplifyResult::SimplifyResult(AstSimplifier* simplifier, AstArray<char> string_value, bool group) : simplifier(simplifier), type(String), string_value(string_value), group(group) {}
+SimplifyResult::SimplifyResult(AstSimplifier* simplifier, AstExpr* other_value, bool group) : simplifier(simplifier), type(Other), other_value(other_value), group(group) {}
 
-AstExpr* AstSimplifier::SimplifyResult::toExpr() {
+AstExpr* SimplifyResult::toExpr() {
     switch (type) {
         case Nil:
             return nil_value;
         case Bool:
-            return simplifier->allocator.alloc<AstExprConstantBool>(Location(), bool_value);
+            return simplifier->getAllocator().alloc<AstExprConstantBool>(Location(), bool_value);
         case Number:
-            return simplifier->allocator.alloc<AstExprConstantNumber>(Location(), number_value);
+            return simplifier->getAllocator().alloc<AstExprConstantNumber>(Location(), number_value);
         case String:
-            return simplifier->allocator.alloc<AstExprConstantString>(Location(), string_value);
+            return simplifier->getAllocator().alloc<AstExprConstantString>(Location(), string_value);
         case Other:
             return other_value;
     }
     // TODO: think of a better solution
     return nullptr;
 }
-std::optional<double> AstSimplifier::SimplifyResult::asNumber() {
+std::optional<double> SimplifyResult::asNumber() {
     switch (type) {
         case Number:
             return number_value;
@@ -938,7 +938,7 @@ std::optional<double> AstSimplifier::SimplifyResult::asNumber() {
             return std::nullopt;
     }
 }
-std::optional<AstArray<char>> AstSimplifier::SimplifyResult::asString() {
+std::optional<AstArray<char>> SimplifyResult::asString() {
     if (type == String)
         return string_value;
 
@@ -948,7 +948,7 @@ std::optional<AstArray<char>> AstSimplifier::SimplifyResult::asString() {
     switch (type) {
         case Number: {
             std::string str = convertNumber(number_value);
-            char* allocated = static_cast<char*>(simplifier->allocator.allocate(str.size()));
+            char* allocated = static_cast<char*>(simplifier->getAllocator().allocate(str.size()));
             strcpy(allocated, str.data());
             result.data = allocated;
             result.size = str.size();
@@ -962,6 +962,9 @@ std::optional<AstArray<char>> AstSimplifier::SimplifyResult::asString() {
 AstSimplifier::AstSimplifier(Allocator& allocator, bool safe, bool disabled, bool simplify_lua_calls) :
     allocator(allocator), safe(safe), disabled(disabled), simplify_lua_calls(simplify_lua_calls) {}
 
+Allocator& AstSimplifier::getAllocator() {
+    return allocator;
+}
 
 std::optional<std::vector<AstExpr*>> AstSimplifier::getDeterminableList(std::vector<AstExpr*> list) {
     size_t list_size = list.size();
@@ -974,7 +977,7 @@ std::optional<std::vector<AstExpr*>> AstSimplifier::getDeterminableList(std::vec
             determinable_list.push_back(value);
         else if (auto value_call = value->as<AstExprCall>()) {
             if (auto func = getRootExpr(value_call->func, false)->as<AstExprFunction>()) {
-                auto body = func->body->body;
+                auto& body = func->body->body;
                 // we need to ensure that there is only one return
                 // this could easily be improved using a visitor that looks for return stats
                 if (body.size != 1)
@@ -987,8 +990,8 @@ std::optional<std::vector<AstExpr*>> AstSimplifier::getDeterminableList(std::vec
                 std::vector<AstExpr*> sub_list;
 
                 // bool vararg = func->args.size == 0 && func->vararg;
-                auto return_list = return_stat->list;
-                auto return_count = return_list.size;
+                auto& return_list = return_stat->list;
+                auto& return_count = return_list.size;
                 if (return_count == 0) {
                     determinable_list.push_back(allocator.alloc<AstExprConstantNil>(Location(Position(0, 0), 0)));
                     continue;
@@ -1020,13 +1023,13 @@ std::optional<std::vector<AstExpr*>> AstSimplifier::getDeterminableList(std::vec
 }
 std::optional<size_t> AstSimplifier::getTableSize(AstExprTable* table) {
     std::vector<AstExpr*> list;
-    auto items = table->items;
+    auto& items = table->items;
 
     if (items.size == 0)
         return 0;
 
     for (unsigned index = 0; index < items.size; index++) {
-        auto item = items.data[index];
+        auto& item = items.data[index];
         if (item.kind != AstExprTable::Item::List)
             return std::nullopt;
 
@@ -1145,7 +1148,7 @@ RET:
     return result;
 }
 
-std::optional<AstSimplifier::SimplifyResult> AstSimplifier::tryReplaceLuaCall(AstExprCall* expr_call, bool group, simplifyHook hook, void* hook_data) {
+std::optional<SimplifyResult> AstSimplifier::tryReplaceLuaCall(AstExprCall* expr_call, bool group, simplifyHook hook, void* hook_data) {
     if (!simplify_lua_calls)
         goto RET;
 
@@ -1166,7 +1169,7 @@ std::optional<AstSimplifier::SimplifyResult> AstSimplifier::tryReplaceLuaCall(As
     if (!result)
         goto RET;
 
-    return AstSimplifier::SimplifyResult(this, result.value(), group);
+    return SimplifyResult(this, result.value(), group);
 
     }
 
@@ -1174,7 +1177,7 @@ RET:
     return std::nullopt;
 }
 
-std::optional<AstSimplifier::SimplifyResult> AstSimplifier::tryReplaceRecordTableIndex(AstExprIndexName* expr_index_name, bool group, simplifyHook hook, void* hook_data) {
+std::optional<SimplifyResult> AstSimplifier::tryReplaceRecordTableIndex(AstExprIndexName* expr_index_name, bool group, simplifyHook hook, void* hook_data) {
     if (!record_table_replace_visitor)
         goto RET;
 
@@ -1194,7 +1197,7 @@ RET:
     return std::nullopt;
 }
 
-std::optional<AstSimplifier::SimplifyResult> AstSimplifier::tryReplaceListTableIndex(AstExprIndexExpr* expr_index_expr, bool group, simplifyHook hook, void* hook_data) {
+std::optional<SimplifyResult> AstSimplifier::tryReplaceListTableIndex(AstExprIndexExpr* expr_index_expr, bool group, simplifyHook hook, void* hook_data) {
     if (!list_table_replace_visitor)
         goto RET;
 
@@ -1237,7 +1240,7 @@ std::optional<AstExprBinary::Op> inverseBinaryOp(AstExprBinary::Op op) {
     return std::nullopt;
 }
 
-AstSimplifier::SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* hook_data) {
+SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* hook_data) {
     // TODO: maybe this should be a pointer passed to getrootexpr that will become true if it encounters a group, instead of just checking if the outermost expr is group
     bool group = expr->is<AstExprGroup>();
 
@@ -1376,7 +1379,7 @@ AstSimplifier::SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHoo
             break;
         #define simpleMathCase(op, operation) genericNumberCase(op, left_number operation right_number)
 
-        auto binary_op = expr_binary->op;
+        auto& binary_op = expr_binary->op;
         switch (binary_op) {
             simpleMathCase(Add, +)
             simpleMathCase(Sub, -)

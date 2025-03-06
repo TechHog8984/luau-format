@@ -111,6 +111,12 @@ AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, Allocato
     return formatter.formatRoot(root);
 }
 
+#define tagOneTrue(node, property) getNodeTag(node).property = true;
+#define tagAllTrue(array, property) { \
+    for (size_t i = 0; i < array.size; i++) \
+        tagOneTrue(array.data[i], property) \
+}
+
 AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, bool dont_make_visitors) {
     if (!dont_make_visitors) {
         #define createVisitor(check, visitor, construction) { \
@@ -132,7 +138,7 @@ AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, bool don
 
     FormatResult result;
 
-    do_end = false;
+    tagOneTrue(root, no_do_end)
     auto root_formatted = formatStat(root);
     result.formatted = root_formatted ? root_formatted.value() : "-- failed to format";
 
@@ -229,7 +235,7 @@ void AstFormatter::appendComment(std::string& result, const char* comment, bool 
     appendChar(result, '('); \
     auto temp_args = std::vector<AstExpr*>(); \
     temp_args.reserve(real_args.size); \
-    for (auto local : real_args) \
+    for (auto& local : real_args) \
         temp_args.push_back(allocator.alloc<AstExprLocal>(Location(), local, false)); \
     if (vararg) \
         temp_args.push_back(allocator.alloc<AstExprVarargs>(Location())); \
@@ -244,8 +250,8 @@ void AstFormatter::appendComment(std::string& result, const char* comment, bool 
     appendFunctionArgs(func->args, func->vararg, name "->args"); \
     appendStr(result, separators.block); \
 \
-    do_end = false; \
     incrementIndent(); \
+    tagOneTrue(func->body, no_do_end) \
         appendNode(func->body, name "->body") \
     decrementIndent(); \
 \
@@ -303,8 +309,8 @@ size_t rewindPastFirstSpace(std::string& string, bool include_newlines = false) 
 
     return std::string::npos;
 }
-size_t AstFormatter::appendOptionalSemicolon(std::string& current, std::string& result) {
-    if (separators.stat_has_semicolon)
+size_t AstFormatter::appendOptionalSemicolon(std::string& current, std::string& result, NodeTag& main_tag) {
+    if (separators.stat_has_semicolon || main_tag.inside_table_list || main_tag.inside_tuple)
         return std::string::npos;
 
     bool is_at_beginning_of_line = current.empty() ? true : (current.at(rewindPastFirstSpace(current, true)) == separators.stat[0]);
@@ -317,13 +323,112 @@ size_t AstFormatter::appendOptionalSemicolon(std::string& current, std::string& 
     return std::string::npos;
 }
 
+AstFormatter::NodeTag& AstFormatter::getNodeTag(AstNode* node) {
+    if (node_tag_map.find(node) == node_tag_map.end())
+        node_tag_map.emplace(node, NodeTag{});
+
+    return node_tag_map.at(node);
+}
+
+class RepeatSimplifierChecker : public AstVisitor {
+    AstStatRepeat* main_stat;
+public:
+    bool found = false;
+    RepeatSimplifierChecker(AstStatRepeat* main_stat) : main_stat(main_stat) {}
+
+    bool visit(AstStatBreak*) override {
+        found = true;
+        return false;
+    }
+    bool visit(AstStatContinue*) override {
+        found = true;
+        return false;
+    }
+
+    bool visit(AstStatBlock*) override {
+        return true;
+    }
+    bool visit(AstStatIf*) override {
+        return true;
+    }
+    bool visit(AstStatWhile*) override {
+        return true;
+    }
+    bool visit(AstStatRepeat* stat_repeat) override {
+        return stat_repeat == main_stat;
+    }
+    bool visit(AstStatReturn*) override {
+        return false;
+    }
+    bool visit(AstStatExpr*) override {
+        return false;
+    }
+    bool visit(AstStatLocal*) override {
+        return false;
+    }
+    bool visit(AstStatFor*) override {
+        return false;
+    }
+    bool visit(AstStatForIn*) override {
+        return false;
+    }
+    bool visit(AstStatAssign*) override {
+        return false;
+    }
+    bool visit(AstStatCompoundAssign*) override {
+        return false;
+    }
+    bool visit(AstStatFunction*) override {
+        return false;
+    }
+    bool visit(AstStatLocalFunction*) override {
+        return false;
+    }
+    bool visit(AstStatTypeAlias*) override {
+        return false;
+    }
+    bool visit(AstStatDeclareFunction*) override {
+        return false;
+    }
+    bool visit(AstStatDeclareGlobal*) override {
+        return false;
+    }
+    bool visit(AstStatDeclareClass*) override {
+        return false;
+    }
+    bool visit(AstStatError*) override {
+        return false;
+    }
+};
+
+bool AstFormatter::canSimplifyRepeatBody(AstStatRepeat* main_stat, SimplifyResult& condition_simplified) {
+    if (simplifier.disabled)
+        return false;
+
+    if (condition_simplified.type != SimplifyResult::Bool)
+        return false;
+
+    if (!condition_simplified.bool_value)
+        return false;
+
+    RepeatSimplifierChecker* visitor = new RepeatSimplifierChecker(main_stat);
+    main_stat->visit(visitor);
+    bool found = visitor->found;
+
+    delete visitor;
+    visitor = nullptr;
+
+    return !found;
+}
+
 std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
     std::string result;
+    auto& main_tag = getNodeTag(main_expr);
     auto main_expr_simplified = simplifier.simplify(main_expr);
     main_expr = main_expr_simplified.toExpr();
 
     if (main_expr_simplified.group) {
-        appendOptionalSemicolon(current, result);
+        appendOptionalSemicolon(current, result, main_tag);
         appendChar(result, '(');
     }
 
@@ -353,6 +458,7 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
 
         appendNode(main_expr_as_call->func, "call->func")
         appendChar(result, '(');
+        tagAllTrue(main_expr_as_call->args, inside_tuple);
         appendArray(main_expr_as_call->args, "call->args", separators.expr_list)
         appendChar(result, ')');
     } else if (auto main_expr_as_index_name = main_expr->as<AstExprIndexName>()) {
@@ -371,14 +477,14 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
     } else if (auto main_expr_as_table = main_expr->as<AstExprTable>()) {
         appendChar(result, '{');
 
-        auto items = main_expr_as_table->items;
+        auto& items = main_expr_as_table->items;
         auto items_size = items.size;
         if (items_size > 0) {
             incrementIndent();
                 appendStr(result, separators.optional_newline);
                 for (size_t i = 0; i < items_size; i++) {
                     appendIndents(result);
-                    auto item = main_expr_as_table->items.data[i];
+                    auto& item = main_expr_as_table->items.data[i];
                     switch (item.kind) {
                         case AstExprTable::Item::List:
                             break;
@@ -393,6 +499,7 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
                             appendStr(result, separators.equals);
                             break;
                     }
+                    tagOneTrue(item.value, inside_table_list)
                     appendNode(item.value, std::string("table->items.data[").append(convertNumber(i)).append("].value"))
                     appendStr(result, separators.table_item);
                 }
@@ -436,18 +543,18 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
     } else if (auto main_expr_as_interp_string = main_expr->as<AstExprInterpString>()) {
         appendChar(result, '`');
 
-        auto string_list = main_expr_as_interp_string->strings;
-        auto expr_list = main_expr_as_interp_string->expressions;
+        auto& string_list = main_expr_as_interp_string->strings;
+        auto& expr_list = main_expr_as_interp_string->expressions;
         auto expr_list_size = expr_list.size;
 
         if (expr_list_size > 0) {
-            auto string = string_list.data[0];
+            auto& string = string_list.data[0];
             insertEnd(result, string.begin(), string.end());
             for (size_t i = 0; i < expr_list_size; i++) {
                 appendChar(result, '{');
                 appendNode(expr_list.data[i], std::string("interp_string->expressions.data[").append(convertNumber(i)) += ']')
                 appendChar(result, '}');
-                auto string = string_list.data[i + 1];
+                auto& string = string_list.data[i + 1];
                 insertEnd(result, string.begin(), string.end());
             }
         }
@@ -468,17 +575,16 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
     current_stat = main_stat;
 
     std::string result;
+    auto& main_tag = getNodeTag(main_stat);
 
     if (auto main_stat_as_block = main_stat->as<AstStatBlock>()) {
-        bool old_do_end = do_end;
-        if (old_do_end) {
-            do_end = false;
+        bool do_end = !main_tag.no_do_end;
+        if (do_end) {
             appendStr(result, std::string("do").append(separators.block));
             incrementIndent();
-        } else
-            do_end = true;
+        }
 
-        auto body = main_stat_as_block->body;
+        auto& body = main_stat_as_block->body;
         auto body_size = body.size;
         if (body_size < 1) {
             appendIndents(result);
@@ -496,7 +602,7 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
                 erase(result, result.size() - 1, 1);
         }
 
-        if (old_do_end) {
+        if (do_end) {
             decrementIndent();
             appendStr(result, separators.block);
             appendIndents(result);
@@ -508,8 +614,8 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         appendStr(result, std::string(separators.post_keyword_expr_close).append("then")
             .append(separators.block));
 
-        do_end = false;
         incrementIndent();
+        tagOneTrue(main_stat_as_if->thenbody, no_do_end)
             appendNode(main_stat_as_if->thenbody, "stat_if->thenbody")
         decrementIndent();
 
@@ -525,8 +631,8 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
             } else {
                 appendStr(result, separators.block);
 
-                do_end = false;
                 incrementIndent();
+                tagOneTrue(main_stat_as_if->elsebody, no_do_end)
                     appendNode(main_stat_as_if->elsebody, "stat_if->elsebody")
                 decrementIndent();
 
@@ -543,8 +649,8 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         appendStr(result, std::string(separators.post_keyword_expr_close).append("do")
             .append(separators.block));
 
-        do_end = false;
         incrementIndent();
+        tagOneTrue(main_stat_as_while->body, no_do_end)
             appendNode(main_stat_as_while->body, "stat_while->body")
         decrementIndent();
 
@@ -555,15 +661,15 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         auto repeat_body = main_stat_as_repeat->body;
         auto repeat_condition = main_stat_as_repeat->condition;
         auto repeat_condition_simplified = simplifier.simplify(repeat_condition);
-        if (!simplifier.disabled && repeat_condition_simplified.type == AstSimplifier::SimplifyResult::Bool && repeat_condition_simplified.bool_value) {
-            do_end = false;
+        if (canSimplifyRepeatBody(main_stat_as_repeat, repeat_condition_simplified)) {
             skip_indent = true; // below AstStatBlock pushes indent for first stat
+            tagOneTrue(repeat_body, no_do_end)
             appendNode(repeat_body, "stat_repeat simplified body");
         } else {
             appendStr(result, std::string("repeat").append(separators.block));
 
-            do_end = false;
             incrementIndent();
+            tagOneTrue(repeat_body, no_do_end)
                 appendNode(repeat_body, "stat_repeat->body")
             decrementIndent();
 
@@ -579,7 +685,7 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
     } else if (main_stat->is<AstStatContinue>()) {
         appendStr(result, "continue");
     } else if (auto main_stat_as_return = main_stat->as<AstStatReturn>()) {
-        auto list = main_stat_as_return->list;
+        auto& list = main_stat_as_return->list;
         appendStr(result, "return");
 
         if (list.size > 0) {
@@ -591,7 +697,7 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
     } else if (auto main_stat_as_local = main_stat->as<AstStatLocal>()) {
         appendStr(result, "local ");
 
-        auto value_list = main_stat_as_local->values;
+        auto& value_list = main_stat_as_local->values;
 
         appendArray(main_stat_as_local->vars, "stat_local-vars", separators.expr_list)
         if (value_list.size > 0) {
@@ -613,8 +719,8 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
 
         appendStr(result, std::string(" do").append(separators.block));
 
-        do_end = false;
         incrementIndent();
+        tagOneTrue(main_stat_as_for->body, no_do_end)
             appendNode(main_stat_as_for->body, "for->body")
         decrementIndent();
 
@@ -628,8 +734,8 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         appendArray(main_stat_as_for_in->values, "for_in->values", separators.expr_list)
         appendStr(result, std::string(" do").append(separators.block));
 
-        do_end = false;
         incrementIndent();
+        tagOneTrue(main_stat_as_for_in->body, no_do_end)
             appendNode(main_stat_as_for_in->body, "for_in->body")
         decrementIndent();
 
@@ -670,21 +776,21 @@ std::optional<std::string> AstFormatter::formatType(AstType* main_type) {
     // TODO: format types
     /*
     if (auto main_type_as_reference = main_type->as<AstTypeReference>()) {
-        auto prefix = main_type_as_reference->prefix;
+        auto& prefix = main_type_as_reference->prefix;
         if (prefix)
             appendStr(result, prefix->value);
             appendChar(result, '.');
 
         appendStr(result, main_type_as_reference->name.value);
 
-        auto parameter_list = main_type_as_reference->parameters;
+        auto& parameter_list = main_type_as_reference->parameters;
         auto parameter_list_size = parameter_list.size;
         if (parameter_list_size > 0 || main_type_as_reference->hasParameterList) {
             appendChar(result, '<');
             for (size_t i = 0; i < parameter_list_size; i++) {
                 // TODO: this separator might not work with spaces
                 appendChar(result, ',');
-                auto param = parameter_list.data[i];
+                auto& param = parameter_list.data[i];
                 appendNode(param.type ? param.type->asType() : param.typePack->asType(), std::string("reference->params.data[").append(convertNumber(i)) += ']')
             }
             appendChar(result, '>');

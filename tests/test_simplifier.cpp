@@ -66,19 +66,19 @@ uint8_t testSimplifier(TestState& state) {
     startTest(simplify_constant_nil) {
         auto simplified = simplifier.simplify(state.expr_constant_nil);
         setContext("simplify on a constant nil")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Nil), "%s did not return a SimplifyResult of type Nil")
+        expect(equals(simplified.type, SimplifyResult::Nil), "%s did not return a SimplifyResult of type Nil")
     }
     endTest(simplify_constant_nil)
 
     startTest(simplify_constant_number) {
         auto simplified = simplifier.simplify(state.expr_constant_number_100);
         setContext("simplify on a constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 100), "%s did not return a SimplifyResult with the same value")
 
         simplified = simplifier.simplify(state.expr_constant_number_negative_100);
         setContext("simplify on a constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, -100), "%s did not return a SimplifyResult with the same value")
     }
     endTest(simplify_constant_number)
@@ -86,12 +86,12 @@ uint8_t testSimplifier(TestState& state) {
     startTest(simplify_constant_bool) {
         auto simplified = simplifier.simplify(state.expr_constant_bool_true);
         setContext("simplify on a constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with the same value (true)")
 
         simplified = simplifier.simplify(state.expr_constant_bool_false);
         setContext("simplify on a constant bool (false)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with the same value (false)")
     }
     endTest(simplify_constant_bool)
@@ -100,7 +100,7 @@ uint8_t testSimplifier(TestState& state) {
         AstExpr* expr_unary = allocator.alloc<AstExprUnary>(location, AstExprUnary::Not, expr); \
         auto simplified = simplifier.simplify(expr_unary); \
         setContext("simplify on a " expr_text) \
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::result_type), "%s did not return a SimplifyResult of type " #result_type) \
+        expect(equals(simplified.type, SimplifyResult::result_type), "%s did not return a SimplifyResult of type " #result_type) \
         expect(equals(simplified.result_type_member, expected_value), "%s did not return a SimplifyResult with " expected_value_text) \
     }
 
@@ -154,7 +154,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_100
         ));
         setContext("simplify on a unary minus with constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, -100), "%s did not return a SimplifyResult with the negated value (-100)")
 
         simplified = simplifier.simplify(allocator.alloc<AstExprUnary>(
@@ -162,7 +162,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_negative_100
         ));
         setContext("simplify on a unary minus with constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 100), "%s did not return a SimplifyResult with the negated value (100)")
     }
     endTest(simplify_unary_minus)
@@ -174,13 +174,13 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_string_foo
         ));
         setContext("simplify on a unary len with constant string ('foo')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 3), "%s did not return a SimplifyResult with value 3")
 
         // string with zero bytes
         simplified = simplifier.simplify(allocator.alloc<AstExprUnary>(location, AstExprUnary::Len, state.expr_constant_string_foo_zero_bytes_bar));
         setContext("simplify on a unary len with constant string ('foo\\0\\0bar')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 8), "%s did not return a SimplifyResult with value 8")
 
         // normal table
@@ -194,7 +194,7 @@ uint8_t testSimplifier(TestState& state) {
             allocator.alloc<AstExprTable>(location, copy(allocator, items.data(), items.size()))
         ));
         setContext("simplify on a unary len with normal table ({100,100,100})")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 3), "%s did not return a SimplifyResult with value 3")
 
         // table with undeterminable
@@ -209,7 +209,7 @@ uint8_t testSimplifier(TestState& state) {
         ));
         simplified = simplifier.simplify(expr);
         setContext("simplify on a unary len with table with undeterminables ({100,local_foo,100})")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr), "%s did not return a SimplifyResult with the same expression passed")
 
         // table with nils forcing binary search
@@ -225,7 +225,7 @@ uint8_t testSimplifier(TestState& state) {
             allocator.alloc<AstExprTable>(location, copy(allocator, items.data(), items.size()))
         ));
         setContext("simplify on a unary len with table with nils ({100,nil,nil,100,nil})")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 1), "%s did not return a SimplifyResult with value 1")
     }
     endTest(simplify_unary_len)
@@ -238,7 +238,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_100
         ));
         setContext("simplify on a binary add with constant number (100) and constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 200), "%s did not return a SimplifyResult with value 200")
 
         // "100" + 100
@@ -248,7 +248,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_100
         ));
         setContext("simplify on a binary add with constant string ('100') and constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 200), "%s did not return a SimplifyResult with value 200")
 
         // "100" + "100"
@@ -258,7 +258,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_string_100
         ));
         setContext("simplify on a binary add with constant string ('100') and constant string ('100')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 200), "%s did not return a SimplifyResult with value 200")
     }
     endTest(simplify_binary_add)
@@ -270,7 +270,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_100
         ));
         setContext("simplify on a binary sub with constant number (-100) and constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, -200), "%s did not return a SimplifyResult with value -200")
 
         // "100" - -100
@@ -280,7 +280,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_negative_100
         ));
         setContext("simplify on a binary sub with constant string ('100') and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 200), "%s did not return a SimplifyResult with value 200")
 
         // "100" - "100"
@@ -290,7 +290,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_string_100
         ));
         setContext("simplify on a binary sub with constant string ('100') and constant string ('100')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 0), "%s did not return a SimplifyResult with value 0")
     }
     endTest(simplify_binary_sub)
@@ -302,7 +302,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_100
         ));
         setContext("simplify on a binary mul with constant number (100) and constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 10000), "%s did not return a SimplifyResult with value 10000")
 
         // "100" * -100
@@ -312,7 +312,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_negative_100
         ));
         setContext("simplify on a binary mul with constant string ('100') and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, -10000), "%s did not return a SimplifyResult with value -10000")
 
         // "100" * "100"
@@ -322,7 +322,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_string_100
         ));
         setContext("simplify on a binary mul with constant string ('100') and constant string ('100')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 10000), "%s did not return a SimplifyResult with value 10000")
     }
     endTest(simplify_binary_mul)
@@ -334,7 +334,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_100
         ));
         setContext("simplify on a binary div with constant number (100) and constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 1), "%s did not return a SimplifyResult with value 1")
 
         // "100" / -100
@@ -344,7 +344,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_negative_100
         ));
         setContext("simplify on a binary div with constant string ('100') and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, -1), "%s did not return a SimplifyResult with value -1")
 
         // "100" / "100"
@@ -354,7 +354,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_string_100
         ));
         setContext("simplify on a binary div with constant string ('100') and constant string ('100')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 1), "%s did not return a SimplifyResult with value 1")
     }
     endTest(simplify_binary_div)
@@ -366,7 +366,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_100
         ));
         setContext("simplify on a binary floordiv with constant number (100) and constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 1), "%s did not return a SimplifyResult with value 1")
 
         // "100" // -100
@@ -376,7 +376,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_negative_100
         ));
         setContext("simplify on a binary floordiv with constant string ('100') and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, -1), "%s did not return a SimplifyResult with value -1")
 
         // "100" // "100"
@@ -386,7 +386,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_string_100
         ));
         setContext("simplify on a binary floordiv with constant string ('100') and constant string ('100')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 1), "%s did not return a SimplifyResult with value 1")
     }
     endTest(simplify_binary_floordiv)
@@ -398,7 +398,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_100
         ));
         setContext("simplify on a binary mod with constant number (100) and constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 0), "%s did not return a SimplifyResult with value 0")
 
         // "100" % -100
@@ -408,7 +408,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_negative_100
         ));
         setContext("simplify on a binary mod with constant string ('100') and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 0), "%s did not return a SimplifyResult with value 0")
 
         // "100" % "100"
@@ -418,7 +418,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_string_100
         ));
         setContext("simplify on a binary mod with constant string ('100') and constant string ('100')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 0), "%s did not return a SimplifyResult with value 0")
     }
     endTest(simplify_binary_mod)
@@ -430,7 +430,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_100
         ));
         setContext("simplify on a binary pow with constant number (100) and constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 1e+200), "%s did not return a SimplifyResult with value 1e+200")
 
         // "100" ^ -100
@@ -440,7 +440,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_negative_100
         ));
         setContext("simplify on a binary pow with constant string ('100') and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 1e-200), "%s did not return a SimplifyResult with value 1e-200")
 
         // "100" ^ "100"
@@ -450,7 +450,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_string_100
         ));
         setContext("simplify on a binary pow with constant string ('100') and constant string ('100')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 1e+200), "%s did not return a SimplifyResult with value 1e+200")
     }
     endTest(simplify_binary_pow)
@@ -463,7 +463,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_string_bar
         ));
         setContext("simplify on a binary concat with constant string ('foo') and constant string ('bar')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::String), "%s did not return a SimplifyResult of type String")
+        expect(equals(simplified.type, SimplifyResult::String), "%s did not return a SimplifyResult of type String")
         expect(equalsCharArray(simplified.string_value, cstringToAstCharArray("foobar")), "%s did not return a SimplifyResult with value 'foobar'")
 
         // "foo" .. 100
@@ -473,7 +473,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_number_100
         ));
         setContext("simplify on a binary concat with constant string ('foo') and constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::String), "%s did not return a SimplifyResult of type String")
+        expect(equals(simplified.type, SimplifyResult::String), "%s did not return a SimplifyResult of type String")
         expect(equalsCharArray(simplified.string_value, cstringToAstCharArray("foo100")), "%s did not return a SimplifyResult with value 'foo100'")
 
         // 100 .. "bar"
@@ -483,7 +483,7 @@ uint8_t testSimplifier(TestState& state) {
             state.expr_constant_string_bar
         ));
         setContext("simplify on a binary concat with constant number (100) and constant string ('bar')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::String), "%s did not return a SimplifyResult of type String")
+        expect(equals(simplified.type, SimplifyResult::String), "%s did not return a SimplifyResult of type String")
         expect(equalsCharArray(simplified.string_value, cstringToAstCharArray("100bar")), "%s did not return a SimplifyResult with value '100bar'")
     }
     endTest(simplify_binary_concat)
@@ -496,7 +496,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         auto simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary ~= with two calls")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         expr_binary = allocator.alloc<AstExprBinary>(
@@ -506,7 +506,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary == with two calls")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
     }
     endTest(simplify_binary_compareeq_other)
@@ -520,7 +520,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         auto simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary ~= with two constant nils")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // nil == nil
@@ -531,7 +531,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary == with two constant nils")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // "foo" ~= nil
@@ -542,7 +542,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary ~= with a constant string ('foo') and a constant nil")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // "foo" == nil
@@ -553,7 +553,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary == with a constant string ('foo') and a constant nil")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // true ~= true
@@ -564,7 +564,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary ~= with two constant bools (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // true == true
@@ -575,7 +575,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary == with two constant bools (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // false ~= true
@@ -586,7 +586,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary ~= with a constant bool (false) and a constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // false == true
@@ -597,7 +597,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary == with a constant bool (false) and a constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // "foo" ~= "foo"
@@ -608,7 +608,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary ~= with two constant string ('foo')s")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // "foo" == "foo"
@@ -619,7 +619,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary == with two constant string ('foo')s")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // "foo" ~= "bar"
@@ -630,7 +630,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary ~= with a constant string ('foo') and a constant string ('bar')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // "foo" == "bar"
@@ -641,7 +641,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary == with a constant string ('foo') and a constant string ('bar')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // 100 ~= 100
@@ -652,7 +652,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary ~= with two constant numbers (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // 100 == 100
@@ -663,7 +663,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary == with two constant numbers (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // 100 ~= -100
@@ -674,7 +674,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary ~= with a constant number (100) and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // 100 == -100
@@ -685,7 +685,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary == with a constant number (100) and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
     }
     endTest(simplify_binary_compareeq_simple)
@@ -699,7 +699,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         auto simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary < with two constant nils")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // nil >= nil
@@ -710,7 +710,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary >= with two constant nils")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // "foo" < nil
@@ -721,7 +721,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary < with a constant string ('foo') and a constant nil")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // "foo" >= nil
@@ -732,7 +732,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary >= with a constant string ('foo') and a constant nil")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // true < true
@@ -743,7 +743,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary < with two constant bools (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // true >= true
@@ -754,7 +754,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary >= with two constant bools (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // false < true
@@ -765,7 +765,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary < with a constant bool (false) and a constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // false >= true
@@ -776,7 +776,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary >= with a constant bool (false) and a constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // "foo" < "foo"
@@ -787,7 +787,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary < with two constant string ('foo')s")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // "foo" >= "foo"
@@ -798,7 +798,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary >= with two constant string ('foo')s")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // "foo" < "bar"
@@ -809,7 +809,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary < with a constant string ('foo') and a constant string ('bar')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // "foo" >= "bar"
@@ -820,7 +820,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary >= with a constant string ('foo') and a constant string ('bar')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // 100 < 100
@@ -831,7 +831,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary < with two constant numbers (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // 100 >= 100
@@ -842,7 +842,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary >= with two constant numbers (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // 100 < -100
@@ -853,7 +853,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary < with a constant number (100) and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // 100 >= -100
@@ -864,7 +864,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary >= with a constant number (100) and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
     }
     endTest(simplify_binary_compareltge_simple)
@@ -878,7 +878,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         auto simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary <= with two constant nils")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // nil > nil
@@ -889,7 +889,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary > with two constant nils")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // "foo" <= nil
@@ -900,7 +900,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary <= with a constant string ('foo') and a constant nil")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // "foo" > nil
@@ -911,7 +911,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary > with a constant string ('foo') and a constant nil")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // true <= true
@@ -922,7 +922,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary <= with two constant bools (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // true > true
@@ -933,7 +933,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary > with two constant bools (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // false <= true
@@ -944,7 +944,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary <= with a constant bool (false) and a constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // false > true
@@ -955,7 +955,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary > with a constant bool (false) and a constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // "foo" <= "foo"
@@ -966,7 +966,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary <= with two constant string ('foo')s")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // "foo" > "foo"
@@ -977,7 +977,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary > with two constant string ('foo')s")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // "foo" <= "bar"
@@ -988,7 +988,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary <= with a constant string ('foo') and a constant string ('bar')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // "foo" > "bar"
@@ -999,7 +999,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary > with a constant string ('foo') and a constant string ('bar')")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // 100 <= 100
@@ -1010,7 +1010,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary <= with two constant numbers (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // 100 > 100
@@ -1021,7 +1021,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary > with two constant numbers (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // 100 <= -100
@@ -1032,7 +1032,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary <= with a constant number (100) and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // 100 > -100
@@ -1043,7 +1043,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary > with a constant number (100) and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Boolean")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
     }
     endTest(simplify_binary_comparelegt_simple)
@@ -1056,7 +1056,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         auto simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary and with a local expr (foo_local) and constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // nil and true
@@ -1066,7 +1066,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary and with a constant nil and constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Nil), "%s did not return a SimplifyResult of type Nil")
+        expect(equals(simplified.type, SimplifyResult::Nil), "%s did not return a SimplifyResult of type Nil")
 
         // true and true
         expr_binary = allocator.alloc<AstExprBinary>(location, AstExprBinary::And,
@@ -1075,7 +1075,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary and with a constant bool (true) and constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // true and 100
@@ -1085,7 +1085,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary and with a constant bool (true) and constant number (100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, 100), "%s did not return a SimplifyResult with value 100")
 
         // false and false
@@ -1095,7 +1095,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary and with a constant bool (false) and constant bool (false)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // false and true
@@ -1105,7 +1105,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary and with a constant bool (false) and constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // true and false
@@ -1115,7 +1115,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary and with a constant bool (true) and constant bool (false)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
     }
     endTest(simplify_binary_and)
@@ -1128,7 +1128,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         auto simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary or with a local expr (foo_local) and constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
+        expect(equals(simplified.type, SimplifyResult::Other), "%s did not return a SimplifyResult of type Other")
         expect(equals(simplified.other_value, expr_binary), "%s did not return a SimplifyResult with the same expression passed")
 
         // nil or true
@@ -1138,7 +1138,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary or with a constant nil and constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // true or true
@@ -1148,7 +1148,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary or with a constant bool (true) and constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // false or false
@@ -1158,7 +1158,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary or with a constant bool (false) and constant bool (false)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, false), "%s did not return a SimplifyResult with value false")
 
         // false or -100
@@ -1168,7 +1168,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary or with a constant bool (false) and constant number (-100)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
+        expect(equals(simplified.type, SimplifyResult::Number), "%s did not return a SimplifyResult of type Number")
         expect(equals(simplified.number_value, -100), "%s did not return a SimplifyResult with value -100")
 
         // false or true
@@ -1178,7 +1178,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary or with a constant bool (false) and constant bool (true)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
 
         // true or false
@@ -1188,7 +1188,7 @@ uint8_t testSimplifier(TestState& state) {
         );
         simplified = simplifier.simplify(expr_binary);
         setContext("simplify on a binary or with a constant bool (true) and constant bool (false)")
-        expect(equals(simplified.type, AstSimplifier::SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
+        expect(equals(simplified.type, SimplifyResult::Bool), "%s did not return a SimplifyResult of type Bool")
         expect(equals(simplified.bool_value, true), "%s did not return a SimplifyResult with value true")
     }
     endTest(simplify_binary_or)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <unordered_map>
 
 #include "Luau/Lexer.h"
 #include "simplifier.hpp"
@@ -42,6 +43,7 @@ AstStatBlock* allocateBlockFromSingleStat(Allocator& allocator, AstStat* single_
 AstStatBlock* combineBlocks(Allocator& allocator, std::vector<AstStatBlock*> block_list);
 
 class AstSimplifier;
+class SimplifyResult;
 class RecordTableReplaceVisitor;
 class ListTableReplaceVisitor;
 class LPHControlFlowVisitor;
@@ -133,13 +135,24 @@ public:
         std::vector<std::string> warnings;
     };
 
+    struct NodeTag {
+        bool no_do_end = false;
+        bool inside_table_list = false;
+        bool inside_tuple = false;
+    };
+
 private:
     FormatOptions options;
+    std::unordered_map<AstNode*, NodeTag> node_tag_map;
 
     std::optional<std::string> formatNode(AstNode* node);
     std::optional<std::string> formatNode(AstLocal* local);
 
-    size_t appendOptionalSemicolon(std::string& current, std::string& result);
+    size_t appendOptionalSemicolon(std::string& current, std::string& result, NodeTag& main_tag);
+    NodeTag& getNodeTag(AstNode* node);
+
+    bool canSimplifyRepeatBody(AstStatRepeat* main_stat, SimplifyResult& condition_simplified);
+
     std::optional<std::string> formatExpr(AstExpr* expr);
     std::optional<std::string> formatStat(AstStat* stat);
     std::optional<std::string> formatType(AstType* type);

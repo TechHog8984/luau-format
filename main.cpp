@@ -11,7 +11,7 @@ int tryFormatContents(Allocator& allocator, AstFormatter::FormatOptions format_o
     AstNameTable names(allocator);
 
     ParseResult parse_result = Parser::parse(contents.c_str(), contents.size(), names, allocator);
-    auto parse_errors = parse_result.errors;
+    auto& parse_errors = parse_result.errors;
     if (parse_errors.empty()) {
         auto result = AstFormatter::formatRoot(
             parse_result.root,
@@ -23,14 +23,14 @@ int tryFormatContents(Allocator& allocator, AstFormatter::FormatOptions format_o
         if (output_file == stdout)
             puts("");
 
-        auto errors = result.errors;
+        auto& errors = result.errors;
         if (!errors.empty()) {
             auto error_count = errors.size();
             fprintf(stderr, "ERROR: there were %zu errors when formatting:\n", error_count);
             for (size_t i = 0; i < error_count; i++)
                 fprintf(stderr, "  %zu - %s\n", i, errors[i].c_str());
         }
-        auto warnings = result.warnings;
+        auto& warnings = result.warnings;
         if (!warnings.empty()) {
             auto warning_count = warnings.size();
             fprintf(stderr, "WARNING: there were %zu warnings when formatting:\n", warning_count);
