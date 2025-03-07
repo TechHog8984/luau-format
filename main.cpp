@@ -122,6 +122,7 @@ int main(int argc, char** argv) {
     AstFormatter::FormatOptions::OutputType output_type = AstFormatter::FormatOptions::Beautified;
 
     bool no_simplify = false;
+    bool optimizations = false;
     bool lua_calls = false;
 
     bool solve_record_table = false;
@@ -154,6 +155,8 @@ int main(int argc, char** argv) {
             output_type = AstFormatter::FormatOptions::Minified;
         } else if (strcmp(arg, "--lua_calls") == 0) {
             lua_calls = true;
+        } else if (strcmp(arg, "--optimize") == 0) {
+            optimizations = true;
         } else if (!handleRecordOption("--sep_stat", arg, true)) {
             sep_stat = arg;
         } else if (!handleRecordOption("--sep_block", arg, true)) {
@@ -163,6 +166,7 @@ int main(int argc, char** argv) {
             solve_record_table = true;
             solve_list_table = true;
             lph_control_flow = true;
+            optimizations = true;
             lua_calls = true;
         } else if (strcmp(arg, "--solve_record_table") == 0) {
             solve_record_table = true;
@@ -214,7 +218,7 @@ int main(int argc, char** argv) {
 
         AstFormatter::FormatOptions format_options(
             output_type,
-            !no_simplify, lua_calls,
+            !no_simplify, optimizations, lua_calls,
             solve_record_table, solve_list_table, lph_control_flow,
             sep_stat, sep_block
         );

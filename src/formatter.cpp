@@ -20,9 +20,10 @@ AstStatBlock* combineBlocks(Allocator& allocator, std::vector<AstStatBlock*> blo
 }
 
 AstFormatter::FormatOptions::FormatOptions(OutputType output_type, bool simplify_expressions,
-    bool lua_calls, bool record_table_replace, bool list_table_replace, bool lph_control_flow,
+    bool optimizations, bool lua_calls, bool record_table_replace, bool list_table_replace,
+    bool lph_control_flow,
     const char* separator_stat, const char* separator_block) :
-    output_type(output_type), simplify_expressions(simplify_expressions), lua_calls(lua_calls), record_table_replace(record_table_replace),
+    output_type(output_type), simplify_expressions(simplify_expressions), optimizations(optimizations), lua_calls(lua_calls), record_table_replace(record_table_replace),
     list_table_replace(list_table_replace), lph_control_flow(lph_control_flow), separator_stat(separator_stat), separator_block(separator_block) {}
 
 AstFormatter::AstFormatter(Allocator& allocator, AstSimplifier& simplifier, FormatOptions options) :
@@ -609,14 +610,31 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
             appendStr(result, "end");
         }
     } else if (auto main_stat_as_if = main_stat->as<AstStatIf>()) {
+        auto thenbody = main_stat_as_if->thenbody;
+
+        auto condition = main_stat_as_if->condition;
+        auto condition_simplified = simplifier.simplify(condition);
+        if (options.optimizations && condition_simplified.type == SimplifyResult::Bool) {
+            if (condition_simplified.bool_value) {
+                skip_indent = true;
+                tagOneTrue(thenbody, no_do_end)
+                appendNode(thenbody, "optimized stat_if->thenbody")
+            } else if (auto elsebody = main_stat_as_if->elsebody) {
+                skip_indent = true;
+                tagOneTrue(elsebody, no_do_end)
+                appendNode(elsebody, "optimized stat_if->elsebody")
+            } else
+                appendComment(result, "optimized-out if statement"); // TODO: this exists because there's an indent; find a better fix
+            goto IF_BRANCH_OMIT_END;
+        }
         appendStr(result, std::string("if").append(separators.post_keyword_expr_open));
-        appendNode(main_stat_as_if->condition, "stat_if->condition")
+        appendNode(condition, "stat_if->condition")
         appendStr(result, std::string(separators.post_keyword_expr_close).append("then")
             .append(separators.block));
 
         incrementIndent();
-        tagOneTrue(main_stat_as_if->thenbody, no_do_end)
-            appendNode(main_stat_as_if->thenbody, "stat_if->thenbody")
+        tagOneTrue(thenbody, no_do_end)
+            appendNode(thenbody, "stat_if->thenbody")
         decrementIndent();
 
         appendStr(result, separators.block);
