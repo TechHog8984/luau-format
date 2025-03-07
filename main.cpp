@@ -137,16 +137,6 @@ int main(int argc, char** argv) {
 
     for (unsigned i = 2; i < (unsigned) argc; i++) {
         const char* arg = argv[i];
-        // if (strncmp(arg, "--output", 8) == 0) {
-        //     if (strlen(arg) == 8 || arg[8] != '=') {
-        //         fprintf(stderr, "ERROR: --output expects an equals sign\n");
-        //         return 1;
-        //     } else if (strlen(arg) < 10) {
-        //         fprintf(stderr, "ERROR: --output expects a file path after the equals sign\n");
-        //         return 1;
-        //     }
-        //     arg += 9;
-        //     output_path = arg;
         if (!handleRecordOption("--output", arg)) {
             output_path = arg;
         } else if (strcmp(arg, "--nosolve") == 0 || strcmp(arg, "--nosimplify") == 0) {
