@@ -167,6 +167,7 @@ public:
     AstExpr* toExpr();
     std::optional<double> asNumber();
     std::optional<AstArray<char>> asString();
+    uint8_t isTruthy();
 };
 
 class AstSimplifier {

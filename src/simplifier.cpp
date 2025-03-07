@@ -1,4 +1,5 @@
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <optional>
@@ -957,6 +958,9 @@ std::optional<AstArray<char>> SimplifyResult::asString() {
         default:
             return std::nullopt;
     }
+}
+uint8_t SimplifyResult::isTruthy() {
+    return isExpressionTruthy(toExpr());
 }
 
 AstSimplifier::AstSimplifier(Allocator& allocator, bool safe, bool disabled, bool simplify_lua_calls) :

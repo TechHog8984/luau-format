@@ -613,9 +613,9 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         auto thenbody = main_stat_as_if->thenbody;
 
         auto condition = main_stat_as_if->condition;
-        auto condition_simplified = simplifier.simplify(condition);
-        if (options.optimizations && condition_simplified.type == SimplifyResult::Bool) {
-            if (condition_simplified.bool_value) {
+        auto condition_is_truthy = simplifier.simplify(condition).isTruthy();
+        if (options.optimizations && condition_is_truthy != 2) {
+            if (condition_is_truthy) {
                 skip_indent = true;
                 tagOneTrue(thenbody, no_do_end)
                 appendNode(thenbody, "optimized stat_if->thenbody")
