@@ -14,9 +14,11 @@ AstStatBlock* allocateBlockFromSingleStat(Allocator& allocator, AstStat* single_
 AstStatBlock* combineBlocks(Allocator& allocator, std::vector<AstStatBlock*> block_list) {
     auto body = std::vector<AstStat*>();
 
-    for (auto block : block_list)
-        for (auto stat : block->body)
-            body.push_back(stat);
+    for (size_t i = 0; i < block_list.size(); i++) {
+        auto& block_body = block_list[i]->body;
+        for (size_t j = 0; j < block_body.size; j++)
+            body.push_back(block_body.data[j]);
+    }
 
     return allocator.alloc<AstStatBlock>(Location(), copy(allocator, body.data(), body.size()));
 }
@@ -238,8 +240,8 @@ void AstFormatter::appendComment(std::string& result, const char* comment, bool 
     appendChar(result, '('); \
     auto temp_args = std::vector<AstExpr*>(); \
     temp_args.reserve(real_args.size); \
-    for (auto& local : real_args) \
-        temp_args.push_back(allocator.alloc<AstExprLocal>(Location(), local, false)); \
+    for (size_t i = 0; i < real_args.size; i++) \
+        temp_args.push_back(allocator.alloc<AstExprLocal>(Location(), real_args.data[i], false)); \
     if (vararg) \
         temp_args.push_back(allocator.alloc<AstExprVarargs>(Location())); \
 \

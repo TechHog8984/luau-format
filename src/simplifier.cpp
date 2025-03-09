@@ -92,7 +92,8 @@ std::string convertNumber(double value) {
 std::string fixString(AstArray<char> value) {
     std::string result = "\"";
 
-    for (char ch : value) {
+    for (size_t i = 0; i < value.size; i++) {
+        auto& ch = value.data[i];
         if (ch > 31 && ch < 127 && ch != '"' && ch != '\\')
             result.append(std::string{ch});
         else {
@@ -429,7 +430,8 @@ bool RecordTableReplaceVisitor::visit(AstStatBlock* root_block) {
             continue;
         auto items = expr_as_table->items;
         bool passes = items.size > 0;
-        for (auto item : items) {
+        for (size_t j = 0; j < items.size; j++) {
+            auto& item = items.data[j];
             if (item.kind != Luau::AstExprTable::Item::Record) {
                 passes = false;
                 break;
@@ -580,8 +582,8 @@ public:
 
             auto stat = cfposition_to_block_map.at(value);
 
-            for (size_t i = 0; i < stat->body.size; i++) {
-                auto inner_stat = stat->body.data[i];
+            for (size_t j = 0; j < stat->body.size; j++) {
+                auto inner_stat = stat->body.data[j];
                 if (inner_stat->is<AstStatBreak>() || inner_stat->is<AstStatContinue>())
                     continue;
                 generated_block_list.push_back(inner_stat);
@@ -784,9 +786,10 @@ FALLTHROUGH:
     if (condition_index_as_local->local != cftable_local)
         goto FALLTHROUGH2;
 
-    AstStatBlock* target_branch = double_unary ? main_block_target_stat_as_if_else : main_block_target_stat_as_if->thenbody;
+    auto& target_branch_body = double_unary ? main_block_target_stat_as_if_else->body : main_block_target_stat_as_if->thenbody->body;
 
-    for (auto stat : target_branch->body) {
+    for (size_t i = 0; i < target_branch_body.size; i++) {
+        auto stat = target_branch_body.data[i];
         tryHandleSet_cfposition(stat);
         tryHandleSet_cftable(stat);
     }
@@ -1119,8 +1122,10 @@ std::optional<std::vector<AstExpr*>> AstSimplifier::getDeterminableList(std::vec
 
                     if (getRootExpr(sub_list.back())->is<AstExprVarargs>(), false) {
                         sub_list.pop_back();
-                        for (auto arg : value_call->args)
+                        for (size_t j = 0; j < value_call->args.size; j++) {
+                            auto& arg = value_call->args.data[j];
                             sub_list.push_back(arg);
+                        }
                     }
 
                     auto sub_determinable_list = getDeterminableList(sub_list);
@@ -1226,7 +1231,8 @@ std::optional<double> AstSimplifier::callLuaFunction(AstArray<AstExpr*> args, co
     if (global_index)
         lua_getfield(L, -1, global_index);
 
-    for (auto arg : args) {
+    for (size_t i = 0; i < args.size; i++) {
+        auto arg = args.data[i];
         SimplifyResult arg_simplified = simplify(arg, hook, hook_data);
         auto arg_as_number = arg_simplified.asNumber();
         auto arg_as_string = arg_simplified.asString();
