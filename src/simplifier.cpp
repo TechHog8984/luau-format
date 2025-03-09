@@ -530,101 +530,126 @@ RET:
     return false;
 }
 
+
+class LPHControlFlowSolver {
+    Allocator& allocator;
+    AstSimplifier& simplifier;
+
+    std::unordered_map<double, AstStatBlock*> cfposition_to_block_map;
+    std::vector<double> cfposition_set_order;
+
+    void tryHandleSet_cftable(AstStat* stat);
+    void tryHandleSet_cfposition(AstStat* stat);
+    int handleIfBlock(AstStatBlock* main_block);
+    int handleIf(AstStatIf* main_if, bool passes);
+public:
+    std::unordered_map<double, double>& cftable;
+    double cfposition;
+    AstLocal* cftable_local;
+    AstLocal* cfposition_local;
+
+    LPHControlFlowSolver(Allocator& allocator, AstSimplifier& simplifier, std::unordered_map<double, double>& cftable, double cfposition, AstLocal* cftable_local, AstLocal* cfposition_local)
+        : allocator(allocator), simplifier(simplifier), cftable(cftable), cfposition(cfposition), cftable_local(cftable_local), cfposition_local(cfposition_local)
+    {
+        cfposition_set_order.push_back(cfposition);
+    }
+
+    void handleLoopBody(AstStat* main_loop_stat, AstArray<AstStat*> main_loop_body) {
+        if (main_loop_body.size < 1)
+            return;
+
+        auto first_stat_as_if = main_loop_body.data[0]->as<AstStatIf>();
+        if (!first_stat_as_if)
+            return;
+
+        auto condition = Condition::tryCreateCondition(simplifier, first_stat_as_if->condition->as<AstExprBinary>(), cfposition_local);
+        if (!condition)
+            return;
+
+        while (!handleIf(first_stat_as_if, condition.value().passes(cfposition)))
+            ;
+
+        std::vector<AstStat*> generated_block_list;
+        generated_block_list.reserve(cfposition_to_block_map.size()); // not accurate
+        for (size_t i = 0; i < cfposition_set_order.size(); i++) {
+            double& value = cfposition_set_order.at(i);
+            if (cfposition_to_block_map.find(value) == cfposition_to_block_map.end()) {
+                fprintf(stderr, "no block found with cfposition %.f", value);
+                return;
+            }
+
+            auto stat = cfposition_to_block_map.at(value);
+
+            for (size_t i = 0; i < stat->body.size; i++) {
+                auto inner_stat = stat->body.data[i];
+                if (inner_stat->is<AstStatBreak>() || inner_stat->is<AstStatContinue>())
+                    continue;
+                generated_block_list.push_back(inner_stat);
+            }
+        }
+        AstStatBlock* generated_block = allocator.alloc<AstStatBlock>(Location(), copy(allocator, generated_block_list.data(), generated_block_list.size()));;
+
+        AstFormatter::getNodeTag(main_loop_stat).stat_replacement = generated_block;
+        auto& generated_block_tag = AstFormatter::getNodeTag(generated_block);
+        generated_block_tag.no_do_end = true;
+        generated_block_tag.skip_indent = true;
+    }
+};
+
 LPHControlFlowVisitor::LPHControlFlowVisitor(Allocator& allocator, AstSimplifier& simplifier) :
     allocator(allocator), simplifier(simplifier) {}
 
-// void LPHControlFlowVisitor::handleIf(AstStatIf* main_if) {
-//     auto main_condition = Condition::tryCreateCondition(simplifier, main_if->condition->as<AstExprBinary>());
-//     if (!main_condition || main_condition->getLocal() != cfposition_local) {
-//         invalidif;gobackandaddblock
-//         return;
-//     }
-
-//     if (main_condition->passes(cfposition)) {
-
-//     } else {
-
-//     }
-// }
-// void LPHControlFlowVisitor::handleBlock(AstStatBlock* main_block) {
-//     auto root_body = main_block->body;
-//     if (root_body.size < 1)
-//         goto PUSHCURRENT;
-
-
-
-// PUSHCURRENT:
-//     reconstructed_blocks.push_back(main_block);
-//     return;
-// }
-
 std::optional<SimplifyResult> lphControlFlowSimplifyHook(AstSimplifier* simplifier, Allocator& allocator, AstExpr* root_expr, bool group, void* data);
 std::optional<SimplifyResult> lphControlFlowSimplifyHook(AstSimplifier* simplifier, Allocator& allocator, AstExpr* root_expr, bool group, void* data) {
-    // puts("1");
     if (!data)
         goto RET;
 
-    // puts("2");
     {
 
-    auto visitor = static_cast<LPHControlFlowVisitor*>(data);
+    auto visitor = static_cast<LPHControlFlowSolver*>(data);
     if (!visitor)
         goto RET;
 
-    // puts("3");
-
     if (auto root_expr_as_index_expr = root_expr->as<AstExprIndexExpr>()) {
-        // puts("4");
-
         auto expr_as_local = getRootExpr(root_expr_as_index_expr->expr)->as<AstExprLocal>();
         if (!expr_as_local)
             goto RET;
 
-        // puts("5");
-
         if (expr_as_local->local != visitor->cftable_local)
             goto RET;
-
-        // puts("6");
 
         auto index_as_number_optional = simplifier->simplify(root_expr_as_index_expr->index).asNumber();
         if (!index_as_number_optional)
             goto RET;
-
-        // puts("7");
 
         double index_as_number = index_as_number_optional.value();
 
         if (visitor->cftable.find(index_as_number) == visitor->cftable.end())
             goto RET;
 
-        // puts("8");
-
-        printf("solved cftable[%.f]: %.f\n", index_as_number, visitor->cftable.at(index_as_number));
+        // printf("solved cftable[%.f]: %.f\n", index_as_number, visitor->cftable.at(index_as_number));
 
         return SimplifyResult(simplifier, visitor->cftable.at(index_as_number), group);
     } else if (auto expr_as_binary = root_expr->as<AstExprBinary>()) {
-        AstExpr* left = expr_as_binary->left;
-        AstExpr* right = expr_as_binary->right;
+        AstExpr* left = simplifier->simplifyToExpr(expr_as_binary->left, lphControlFlowSimplifyHook, visitor);
+        AstExpr* right = simplifier->simplifyToExpr(expr_as_binary->right, lphControlFlowSimplifyHook, visitor);
 
         bool updated = false;
 
-        auto left_as_local = simplifier->simplifyToExpr(left)->as<AstExprLocal>();
+        auto left_as_local = left->as<AstExprLocal>();
         if (left_as_local && left_as_local->local == visitor->cfposition_local) {
             updated = true;
             left = allocator.alloc<AstExprConstantNumber>(Location(), visitor->cfposition);
         }
 
-        auto right_as_local = simplifier->simplifyToExpr(right)->as<AstExprLocal>();
+        auto right_as_local = right->as<AstExprLocal>();
         if (right_as_local && right_as_local->local == visitor->cfposition_local) {
             updated = true;
             right = allocator.alloc<AstExprConstantNumber>(Location(), visitor->cfposition);
         }
 
-        if (updated) {
-            puts("replaced cfposition in binary");
+        if (updated)
             return simplifier->simplify(allocator.alloc<AstExprBinary>(Location(), expr_as_binary->op, left, right), lphControlFlowSimplifyHook, visitor);
-        }
     }
 
     }
@@ -633,7 +658,7 @@ RET:
     return std::nullopt;
 }
 
-void LPHControlFlowVisitor::tryHandleSet_cftable(AstStat* stat) {
+void LPHControlFlowSolver::tryHandleSet_cftable(AstStat* stat) {
     auto stat_as_assign = stat->as<AstStatAssign>();
     if (!stat_as_assign)
         return;
@@ -670,9 +695,8 @@ void LPHControlFlowVisitor::tryHandleSet_cftable(AstStat* stat) {
     }
 
     cftable.emplace(index_as_number.value(), value_as_number.value());
-    printf("cftable[%.f] = %.f\n", index_as_number.value(), value_as_number.value());
 }
-void LPHControlFlowVisitor::tryHandleSet_cfposition(AstStat* stat) {
+void LPHControlFlowSolver::tryHandleSet_cfposition(AstStat* stat) {
     auto stat_simple_assignment = getSimpleAssign(stat);
     if (!stat_simple_assignment)
         return;
@@ -685,10 +709,10 @@ void LPHControlFlowVisitor::tryHandleSet_cfposition(AstStat* stat) {
         return;
 
     cfposition = value_as_number.value();
-    printf("cfposition = %.f\n", cfposition);
+    cfposition_set_order.push_back(cfposition);
 }
 
-int LPHControlFlowVisitor::handleIfBlock(AstStatBlock* main_block) {
+int LPHControlFlowSolver::handleIfBlock(AstStatBlock* main_block) {
     auto& root_block_body = main_block->body;
     if (root_block_body.size == 1) {
         auto inner_if = root_block_body.data[0]->as<AstStatIf>();
@@ -697,7 +721,7 @@ int LPHControlFlowVisitor::handleIfBlock(AstStatBlock* main_block) {
         auto inner_condition = Condition::tryCreateCondition(simplifier, inner_if->condition->as<AstExprBinary>(), cfposition_local);
         if (!inner_condition) goto FALLTHROUGH;
 
-        return handleIf(inner_if, inner_condition.value());
+        return handleIf(inner_if, inner_condition.value().passes(cfposition));
     }
 
 FALLTHROUGH:
@@ -706,12 +730,19 @@ FALLTHROUGH:
     auto& main_block_body = main_block->body;
 
     AstStatIf* main_block_target_stat_as_if = nullptr;
+    size_t main_block_target_stat_as_if_index = -1;
     for (size_t i = main_block_body.size; i > 0;) {
         if (auto stat_if = main_block_body.data[--i]->as<AstStatIf>()) {
             main_block_target_stat_as_if = stat_if;
+            main_block_target_stat_as_if_index = i;
             break;
         }
     }
+
+    double current_cfposition = cfposition;
+
+    if (cfposition_to_block_map.find(current_cfposition) != cfposition_to_block_map.end())
+        return 1;
 
     if (!main_block_target_stat_as_if)
         goto FALLTHROUGH2;
@@ -760,16 +791,32 @@ FALLTHROUGH:
         tryHandleSet_cftable(stat);
     }
 
+    if (main_block_target_stat_as_if_index) {
+        std::vector<AstStat*> new_main_block_list;
+        new_main_block_list.reserve(main_block_target_stat_as_if_index);
+
+        for (size_t i = 0; i < main_block_target_stat_as_if_index; i++) {
+            new_main_block_list.push_back(main_block_body.data[i]);
+        }
+
+        main_block = allocator.alloc<AstStatBlock>(Location(), copy(allocator, new_main_block_list.data(), new_main_block_list.size()));
+    } else {
+        AstArray<AstStat*> ast_array;
+        ast_array.data = nullptr;
+        ast_array.size = 0;
+        main_block = allocator.alloc<AstStatBlock>(Location(), ast_array);
+    }
+
     }
 
 FALLTHROUGH2:
 
-    reconstructed_blocks.push_back(main_block);
+    cfposition_to_block_map.emplace(current_cfposition, main_block);
     return 0;
 }
 
-int LPHControlFlowVisitor::handleIf(AstStatIf* main_if, Condition& condition) {
-    if (condition.passes(cfposition))
+int LPHControlFlowSolver::handleIf(AstStatIf* main_if, bool passes) {
+    if (passes)
         return handleIfBlock(main_if->thenbody);
 
     auto else_body = main_if->elsebody;
@@ -779,13 +826,45 @@ int LPHControlFlowVisitor::handleIf(AstStatIf* main_if, Condition& condition) {
 
     AstStatBlock* else_body_as_block = else_body->as<AstStatBlock>();
     if (auto else_body_as_if = else_body->as<AstStatIf>()) {
-        auto inner_condition = Condition::tryCreateCondition(simplifier, else_body_as_if->condition->as<AstExprBinary>(), cfposition_local);
+        auto condition_as_binary = else_body_as_if->condition->as<AstExprBinary>();
+        if (!condition_as_binary)
+            goto ELSEIF_FALLTHROUGH;
+
+        {
+
+        auto inner_condition = Condition::tryCreateCondition(simplifier, condition_as_binary, cfposition_local);
+
         if (!inner_condition) {
-            else_body_as_block = allocateBlockFromSingleStat(allocator, else_body_as_if);
-            goto ELSE_FALLTHROUGH;
+            // auto left_condition = Condition::tryCreateCondition(
+            //     simplifier,
+            //     condition_as_binary->left->as<AstExprBinary>(),
+            //     cfposition_local
+            // );
+            // auto right_condition = Condition::tryCreateCondition(
+            //     simplifier,
+            //     condition_as_binary->right->as<AstExprBinary>(),
+            //     cfposition_local
+            // );
+
+            // if (!left_condition || !right_condition)
+            //     goto ELSEIF_FALLTHROUGH;
+
+            // return handlfi
+            // TODO: check left to be binary with left/right of valid condition and left/right of cfposition_local
+            goto ELSEIF_FALLTHROUGH;
         }
 
-        return handleIf(else_body_as_if, inner_condition.value());
+        if (!inner_condition) {
+            goto ELSEIF_FALLTHROUGH;
+        }
+
+        return handleIf(else_body_as_if, inner_condition.value().passes(cfposition));
+
+        }
+
+    ELSEIF_FALLTHROUGH:
+        else_body_as_block = allocateBlockFromSingleStat(allocator, else_body_as_if);
+        goto ELSE_FALLTHROUGH;
     } else if (!else_body_as_block)
         // return setErrorMessage("[handleIf] Luau error: if else body was neither block nor if");
         return 1;
@@ -794,9 +873,25 @@ ELSE_FALLTHROUGH:
     return handleIfBlock(else_body_as_block);
 }
 
-// int LPHControlFlowVisitor::handleIf() {
-//     return handleIf(root_if, root_condition);
-// }
+typedef struct {
+    AstArray<AstStat*> body;
+} InfiniteLoop;
+std::optional<InfiniteLoop> getInfiniteLoop(AstSimplifier& simplifier, AstStat* main_stat) {
+    std::optional<InfiniteLoop> result = std::nullopt;
+
+    if (auto main_stat_as_while = main_stat->as<AstStatWhile>()) {
+        if (simplifier.simplify(main_stat_as_while->condition).isTruthy() != 1)
+            goto RET;
+        result = std::make_optional(InfiniteLoop{ .body = main_stat_as_while->body->body });
+    } else if (auto main_stat_as_repeat = main_stat->as<AstStatRepeat>()) {
+        if (simplifier.simplify(main_stat_as_repeat->condition).isTruthy() != 0)
+            goto RET;
+        result = std::make_optional(InfiniteLoop{ .body = main_stat_as_repeat->body->body });
+    }
+
+RET:
+    return result;
+}
 
 bool LPHControlFlowVisitor::visit(AstStatBlock* root_block) {
     auto& root_block_body = root_block->body;
@@ -840,22 +935,17 @@ bool LPHControlFlowVisitor::visit(AstStatBlock* root_block) {
     if (cftable_expr->items.size != 0)
         goto RET;
 
-    cftable_local = first_stat_simple_assign->var_local;
+    AstLocal* cftable_local = first_stat_simple_assign->var_local;
 
     auto second_stat_as_local = root_func_body.data[1]->as<AstStatLocal>();
     if (!second_stat_as_local)
         goto RET;
 
-    auto third_stat_as_while = root_func_body.data[2]->as<AstStatWhile>();
-    if (!third_stat_as_while)
-        goto RET;
-
-    auto& main_while_body = third_stat_as_while->body->body;
-    if (main_while_body.size < 1)
-        goto RET;
-
     auto& second_stat_var_list = second_stat_as_local->vars;
     auto& second_stat_value_list = second_stat_as_local->values;
+
+    double cfposition = -1;
+    AstLocal* cfposition_local = nullptr;
 
     for (size_t i = 0; i < second_stat_var_list.size; i++) {
         if (second_stat_value_list.size <= i)
@@ -873,24 +963,46 @@ bool LPHControlFlowVisitor::visit(AstStatBlock* root_block) {
     if (!cfposition_local)
         goto RET;
 
-    auto first_while_stat_as_if = main_while_body.data[0]->as<AstStatIf>();
-    if (!first_while_stat_as_if)
-        goto RET;
+    std::unordered_map<double, double> cftable;
 
-    auto condition = Condition::tryCreateCondition(simplifier, first_while_stat_as_if->condition->as<AstExprBinary>(), cfposition_local);
-    if (!condition)
-        goto RET;
+    for (size_t i = 2; i < root_func_body.size - 1; i++) {
+        auto first_stat = root_func_body.data[i];
+        auto second_stat = root_func_body.data[i + 1];
 
-    puts("HA");
+        auto first_simple_assign = getSimpleAssign(first_stat);
+        if (!first_simple_assign) {
+            if (i == 2) {
+                second_stat = first_stat;
+                goto AFTER_FIRST_VERIFICATION;
+            }
+            continue;
+        }
 
-    int r;
-    for (char i = 0; i < 10; i++) {
-        r = handleIf(first_while_stat_as_if, condition.value());
-        if (r)
-            break;
+        if (first_simple_assign->var_local != cfposition_local)
+            continue;
+
+        {
+
+        auto first_simple_assign_as_number = simplifier.simplify(first_simple_assign->value).asNumber();
+        if (!first_simple_assign_as_number)
+            continue;
+
+        cfposition = first_simple_assign_as_number.value();
+
+        }
+
+    AFTER_FIRST_VERIFICATION:
+
+        auto second_stat_loop = getInfiniteLoop(simplifier, second_stat);
+        if (!second_stat_loop)
+            continue;
+
+        LPHControlFlowSolver inner_visitor(allocator, simplifier, cftable, cfposition, cftable_local, cfposition_local);
+        inner_visitor.handleLoopBody(second_stat, second_stat_loop->body);
+        i++;
     }
 
-    puts("AH");
+    // TODO: have a loop through root body; find valid while / repeats that have an assign to cfposition (we will use that new cf position and pass to constructor)
 
     success = true;
 

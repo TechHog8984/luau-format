@@ -141,17 +141,18 @@ public:
         bool no_do_end = false;
         bool inside_table_list = false;
         bool inside_tuple = false;
+        bool skip_indent = false;
+        AstStat* stat_replacement = nullptr;
     };
 
 private:
     FormatOptions options;
-    std::unordered_map<AstNode*, NodeTag> node_tag_map;
+    static std::unordered_map<AstNode*, NodeTag> node_tag_map;
 
     std::optional<std::string> formatNode(AstNode* node);
     std::optional<std::string> formatNode(AstLocal* local);
 
     size_t appendOptionalSemicolon(std::string& current, std::string& result, NodeTag& main_tag);
-    NodeTag& getNodeTag(AstNode* node);
 
     bool canSimplifyRepeatBody(AstStatRepeat* main_stat, SimplifyResult& condition_simplified);
 
@@ -159,6 +160,7 @@ private:
     std::optional<std::string> formatStat(AstStat* stat);
     std::optional<std::string> formatType(AstType* type);
 public:
+    static NodeTag& getNodeTag(AstNode* node);
 
     AstFormatter(Allocator& allocator, AstSimplifier& simplifier, FormatOptions options);
     ~AstFormatter();

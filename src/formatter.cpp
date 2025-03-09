@@ -3,6 +3,8 @@
 
 #include "Luau/Ast.h"
 
+std::unordered_map<AstNode*, AstFormatter::NodeTag> AstFormatter::node_tag_map = {};
+
 AstStatBlock* allocateBlockFromSingleStat(Allocator& allocator, AstStat* single_stat) {
     auto body = std::vector<AstStat*>();
     body.push_back(single_stat);
@@ -578,6 +580,19 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
     std::string result;
     auto& main_tag = getNodeTag(main_stat);
 
+    if (main_tag.stat_replacement) {
+        if (main_tag.stat_replacement == main_stat) {
+            fprintf(stderr, "cyclic node tag stat_replacement\n");
+            exit(1);
+        }
+        current_stat = nullptr;
+        return formatStat(main_tag.stat_replacement);
+    }
+
+    // TODO: maybe just `skip_indent = main_tag.skip_indent` which will set skip_indent to desired state potentially getting around state management issues
+    if (main_tag.skip_indent)
+        skip_indent = true;
+
     if (auto main_stat_as_block = main_stat->as<AstStatBlock>()) {
         bool do_end = !main_tag.no_do_end;
         if (do_end) {
@@ -794,6 +809,7 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         appendComment(result, message.c_str(), true);
     }
 
+    // note: everything you do here must be replicated in `if main_tag.stat_replacement` branch at the beginning of this function
     current_stat = nullptr;
 
     return result;

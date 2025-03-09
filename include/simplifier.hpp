@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <unordered_map>
 
 #include "Luau/Ast.h"
 #include "Luau/Lexer.h"
@@ -115,22 +116,9 @@ class LPHControlFlowVisitor : public AstVisitor {
     Allocator& allocator;
     AstSimplifier& simplifier;
 
-    std::vector<AstStatBlock*> reconstructed_blocks;
-
-    // void handleIf(AstStatIf* main_if);
-    // void handleBlock(AstStatBlock* main_block);
-
-    void tryHandleSet_cftable(AstStat* stat);
-    void tryHandleSet_cfposition(AstStat* stat);
-    int handleIfBlock(AstStatBlock* main_block);
-    int handleIf(AstStatIf* main_if, Condition& condition);
 public:
     bool success = false;
-
-    std::unordered_map<double, double> cftable;
-    double cfposition;
-    AstLocal* cftable_local = nullptr;
-    AstLocal* cfposition_local = nullptr;
+    AstStatBlock* generated_block;
 
     LPHControlFlowVisitor(Allocator& allocator, AstSimplifier& simplifier);
 
