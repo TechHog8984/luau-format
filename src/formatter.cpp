@@ -57,7 +57,7 @@ AstFormatter::AstFormatter(Allocator& allocator, AstSimplifier& simplifier, Form
             separators.optional_newline = "";
             separators.post_keyword_expr_open = "(";
             separators.post_keyword_expr_close = ")";
-            separators.optional_post_keyword_expr_close = separators.post_keyword_expr_open;
+            separators.optional_post_keyword_expr_close = separators.post_keyword_expr_close;
             separators.expr_list = ",";
             separators.table_item = separators.expr_list;
             separators.equals = "=";
@@ -609,14 +609,15 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
             appendComment(result, "empty block");
         } else {
             bool is_first = true;
+            const size_t last = body_size - 1;
             for (size_t i = 0; i < body_size; i++) {
                 appendIndents(result);
                 appendNode2(body.data[i], std::string("stat_block->body.data[").append(convertNumber(i) += ']'), is_first)
-                appendStr(result, separators.stat);
+                if (!(main_tag.skip_last_stat_separator && i == last))
+                    appendStr(result, separators.stat);
                 is_first = false;
             }
-            size_t sep_stat_length = strlen(separators.stat);
-            if (separators.stat[sep_stat_length - 1] == '\n')
+            if (!main_tag.skip_last_stat_separator && separators.stat[strlen(separators.stat) - 1] == '\n')
                 erase(result, result.size() - 1, 1);
         }
 
@@ -699,6 +700,7 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         if (canSimplifyRepeatBody(main_stat_as_repeat, repeat_condition_simplified)) {
             skip_indent = true; // below AstStatBlock pushes indent for first stat
             tagOneTrue(repeat_body, no_do_end)
+            tagOneTrue(repeat_body, skip_last_stat_separator)
             appendNode(repeat_body, "stat_repeat simplified body");
         } else {
             appendStr(result, std::string("repeat").append(separators.block));

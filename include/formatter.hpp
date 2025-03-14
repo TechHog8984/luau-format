@@ -142,6 +142,7 @@ public:
         bool inside_table_list = false;
         bool inside_tuple = false;
         bool skip_indent = false;
+        bool skip_last_stat_separator = false;
         AstStat* stat_replacement = nullptr;
     };
 
