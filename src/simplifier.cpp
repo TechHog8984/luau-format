@@ -258,9 +258,11 @@ std::optional<SimpleAssign> getSimpleAssign(AstStat* stat, bool can_have_no_valu
         if (!var)
             return std::nullopt;
 
+        auto& local = var->local;
+
         return SimpleAssign{
-            .var = var->local->name.value,
-            .var_local = var->local,
+            .var = local->name.value,
+            .var_local = local,
             .value = has_value ? value_list.data[0] : nullptr
         };
     } else if (auto stat_as_local = stat->as<AstStatLocal>()) {
@@ -279,9 +281,11 @@ std::optional<SimpleAssign> getSimpleAssign(AstStat* stat, bool can_have_no_valu
             has_value = true;
         }
 
+        auto& local = var_list.data[0];
+
         return SimpleAssign{
-            .var = var_list.data[0]->name.value,
-            .var_local = nullptr,
+            .var = local->name.value,
+            .var_local = local,
             .value = has_value ? value_list.data[0] : nullptr
         };
     }

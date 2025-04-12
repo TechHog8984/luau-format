@@ -128,7 +128,10 @@ AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, bool don
             if (check) { \
                 visitor = construction; \
                 root->visit(visitor); \
-                if (!visitor->success) maybeDeleteVisitor(visitor) \
+                if (!visitor->success) { \
+                    reportWarning("visitor " #visitor " failed!"); \
+                    maybeDeleteVisitor(visitor) \
+                } \
                 simplifier.visitor = visitor; \
             } \
         }
@@ -582,6 +585,12 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
     std::string result;
     auto& main_tag = getNodeTag(main_stat);
 
+    if (main_tag.dont_format) {
+        current_stat = nullptr;
+        appendComment(result, "emitted stat");
+        return result;
+    }
+
     if (main_tag.stat_replacement) {
         if (main_tag.stat_replacement == main_stat) {
             fprintf(stderr, "cyclic node tag stat_replacement\n");
@@ -611,13 +620,17 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
             bool is_first = true;
             const size_t last = body_size - 1;
             for (size_t i = 0; i < body_size; i++) {
+                auto stat = body.data[i];
+                if (getNodeTag(stat).dont_format)
+                    continue;
                 appendIndents(result);
-                appendNode2(body.data[i], std::string("stat_block->body.data[").append(convertNumber(i) += ']'), is_first)
+                appendNode2(stat, std::string("stat_block->body.data[").append(convertNumber(i) += ']'), is_first)
                 if (!(main_tag.skip_last_stat_separator && i == last))
                     appendStr(result, separators.stat);
                 is_first = false;
             }
-            if (!main_tag.skip_last_stat_separator && separators.stat[strlen(separators.stat) - 1] == '\n')
+            // !is_first lets us know if we actually appended any stats (versus all being tagged with dont_format)
+            if (!is_first && !main_tag.skip_last_stat_separator && separators.stat[strlen(separators.stat) - 1] == '\n')
                 erase(result, result.size() - 1, 1);
         }
 

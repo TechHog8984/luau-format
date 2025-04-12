@@ -138,6 +138,7 @@ public:
     };
 
     struct NodeTag {
+        bool dont_format = false;
         bool no_do_end = false;
         bool inside_table_list = false;
         bool inside_tuple = false;
