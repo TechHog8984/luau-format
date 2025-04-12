@@ -57,6 +57,9 @@ if [[ "$PLATFORM" == "linux" ]]; then
     builddir=build/linux
 elif [[ "$PLATFORM" == "windows" ]]; then
     compiler=x86_64-w64-mingw32-g++-posix
+    if ! command -v $compiler >/dev/null 2>&1; then
+        compiler="x86_64-w64-mingw32-g++"
+    fi
     outfile=$outfile.exe
     builddir=build/windows
 else
