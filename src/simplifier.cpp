@@ -372,10 +372,10 @@ bool Condition::passes(double input) {
             result = left <= right;
             break;
         case AstExprBinary::CompareGt:
-            result = left >= right;
+            result = left > right;
             break;
         case AstExprBinary::CompareGe:
-            result = left > right;
+            result = left >= right;
             break;
         default: {
             fprintf(stderr, "ERROR passes: unhandled op %d\n", op);
