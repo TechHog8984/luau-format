@@ -1094,7 +1094,7 @@ std::optional<std::vector<AstExpr*>> AstSimplifier::getDeterminableList(std::vec
     std::vector<AstExpr*> determinable_list;
 
     for (size_t i = 0; i < list_size; i++) {
-        AstExpr* value = simplifyToExpr(list.at(i));
+        AstExpr* value = simplifyToExpr(list[i]);
 
         if (isExpressionTruthy(value) < 2) // if a value can be determined as truthy, we consider it "determinable"
             determinable_list.push_back(value);
@@ -1139,13 +1139,19 @@ std::optional<std::vector<AstExpr*>> AstSimplifier::getDeterminableList(std::vec
                         return std::nullopt;
                 } else
                     determinable_list.push_back(return_list.data[0]);
-            }
+            } else
+                return std::nullopt;
         } else
             return std::nullopt;
     }
 
     return determinable_list;
 }
+std::optional<std::vector<AstExpr*>> AstSimplifier::getDeterminableList(AstArray<AstExpr*> list) {
+    std::vector<AstExpr*> vector(list.data, list.data + list.size);
+    return getDeterminableList(vector);
+}
+
 std::optional<size_t> AstSimplifier::getTableSize(AstExprTable* table) {
     std::vector<AstExpr*> list;
     auto& items = table->items;
@@ -1342,6 +1348,36 @@ std::optional<SimplifyResult> AstSimplifier::tryReplaceListTableIndex(AstExprInd
 
     }
 
+RET:
+    return std::nullopt;
+}
+
+std::optional<SimplifyResult> AstSimplifier::tryReplaceSimpleAnonymousFunctionCall(AstExprCall* expr_call, bool group, simplifyHook hook, void* hook_data) {
+    auto func = simplify(getRootExpr(expr_call->func, false), hook, hook_data).toExpr()->as<AstExprFunction>();
+    if (!func)
+        goto RET;
+
+    {
+
+    auto func_body = func->body->body;
+    if (func_body.size == 1) {
+        if (auto stat_as_return = func_body.data[0]->as<AstStatReturn>()) {
+            auto determinable_list = getDeterminableList(stat_as_return->list);
+            if (!determinable_list)
+                goto RET;
+
+            size_t count = determinable_list->size();
+            if (count == 0)
+                return simplify(allocator.alloc<AstExprConstantNil>(Location()));
+
+            if (count != 1)
+                goto RET;
+
+            return simplify(determinable_list.value()[0], hook, hook_data);
+        }
+    }
+
+    }
 RET:
     return std::nullopt;
 }
@@ -1592,6 +1628,7 @@ SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* h
         #undef genericNumberCase
     } else if (auto expr_call = expr->as<AstExprCall>()) {
         try(tryReplaceLuaCall, expr_call)
+        try(tryReplaceSimpleAnonymousFunctionCall, expr_call)
     } else if (auto expr_index_name = expr->as<AstExprIndexName>()) {
         try(tryReplaceRecordTableIndex, expr_index_name)
     } else if (auto expr_index_expr = expr->as<AstExprIndexExpr>()) {

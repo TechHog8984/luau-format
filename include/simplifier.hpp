@@ -125,6 +125,8 @@ public:
     bool visit(AstStatBlock* root_block) override;
 };
 
+std::optional<AstExprBinary::Op> inverseBinaryOp(AstExprBinary::Op op);
+
 class SimplifyResult {
     AstSimplifier* simplifier;
 public:
@@ -163,6 +165,7 @@ class AstSimplifier {
     bool safe;
 
     std::optional<std::vector<AstExpr*>> getDeterminableList(std::vector<AstExpr*> list);
+    std::optional<std::vector<AstExpr*>> getDeterminableList(AstArray<AstExpr*> list);
     std::optional<size_t> getTableSize(AstExprTable* table);
 
     binaryCompareBool binary_compare_bool_list[6] = { binaryCompareBool_ne, binaryCompareBool_eq, binaryCompareBool_lt, binaryCompareBool_le, binaryCompareBool_gt, binaryCompareBool_ge };
@@ -192,4 +195,5 @@ private:
 
     std::optional<SimplifyResult> tryReplaceRecordTableIndex(AstExprIndexName* expr_index_name, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
     std::optional<SimplifyResult> tryReplaceListTableIndex(AstExprIndexExpr* expr_index_expr, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
+    std::optional<SimplifyResult> tryReplaceSimpleAnonymousFunctionCall(AstExprCall* expr_call, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
 };

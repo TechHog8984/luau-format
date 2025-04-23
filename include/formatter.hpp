@@ -76,7 +76,6 @@ class AstFormatter {
 
     void setSeparatorStat(const char* sep);
 
-    bool do_end = true;
     bool indents_active = true;
     size_t indent_count = 0;
     bool skip_indent = false;
@@ -137,6 +136,7 @@ public:
         std::vector<std::string> warnings;
     };
 
+    // NOTE: don't forget to reflect changes to copyNodeTag
     struct NodeTag {
         bool dont_format = false;
         bool no_do_end = false;
@@ -146,6 +146,8 @@ public:
         bool skip_last_stat_separator = false;
         AstStat* stat_replacement = nullptr;
     };
+
+    static void copyNodeTag(AstNode* recipient, AstNode* reference);
 
 private:
     FormatOptions options;

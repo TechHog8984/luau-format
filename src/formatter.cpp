@@ -23,6 +23,19 @@ AstStatBlock* combineBlocks(Allocator& allocator, std::vector<AstStatBlock*> blo
     return allocator.alloc<AstStatBlock>(Location(), copy(allocator, body.data(), body.size()));
 }
 
+void AstFormatter::copyNodeTag(AstNode* recipient, AstNode* reference) {
+    auto& recipient_tag = getNodeTag(recipient);
+    auto& reference_tag = getNodeTag(reference);
+
+    recipient_tag.dont_format = reference_tag.dont_format;
+    recipient_tag.no_do_end = reference_tag.no_do_end;
+    recipient_tag.inside_table_list = reference_tag.inside_table_list;
+    recipient_tag.inside_tuple = reference_tag.inside_tuple;
+    recipient_tag.skip_indent = reference_tag.skip_indent;
+    recipient_tag.skip_last_stat_separator = reference_tag.skip_last_stat_separator;
+    recipient_tag.stat_replacement = reference_tag.stat_replacement;
+}
+
 AstFormatter::FormatOptions::FormatOptions(OutputType output_type, bool simplify_expressions,
     bool optimizations, bool lua_calls, bool record_table_replace, bool list_table_replace,
     bool lph_control_flow,
@@ -166,8 +179,10 @@ void AstFormatter::appendStr(std::string& result, std::string str) {
     result.append(str);
 }
 void AstFormatter::erase(std::string& result, size_t pos, size_t n) {
-    if (pos < current.size())
-        current.erase(pos, n);
+    // TODO: better solution for erasing current; we can't just supply the same pos
+    // also, this HEAVILY slow down the program
+    // if (pos < current.size())
+    //     current.erase(pos, n);
     result.erase(pos, n);
 }
 void AstFormatter::eraseOne(std::string& result, size_t pos) {
@@ -642,15 +657,17 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         }
     } else if (auto main_stat_as_if = main_stat->as<AstStatIf>()) {
         auto thenbody = main_stat_as_if->thenbody;
+        auto elsebody = main_stat_as_if->elsebody;
 
         auto condition = main_stat_as_if->condition;
+
         auto condition_is_truthy = simplifier.simplify(condition).isTruthy();
         if (options.optimizations && condition_is_truthy != 2) {
             if (condition_is_truthy) {
                 skip_indent = true;
                 tagOneTrue(thenbody, no_do_end)
                 appendNode(thenbody, "optimized stat_if->thenbody")
-            } else if (auto elsebody = main_stat_as_if->elsebody) {
+            } else if (elsebody) {
                 skip_indent = true;
                 tagOneTrue(elsebody, no_do_end)
                 appendNode(elsebody, "optimized stat_if->elsebody")
@@ -658,6 +675,22 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
                 appendComment(result, "optimized-out if statement"); // TODO: this exists because there's an indent; find a better fix
             goto IF_BRANCH_OMIT_END;
         }
+
+        if (options.optimizations && elsebody && thenbody->body.size == 0) {
+            if (auto condition_as_binary = simplifier.simplifyToExpr(condition)->as<AstExprBinary>()) {
+                auto inversed = inverseBinaryOp(condition_as_binary->op);
+                if (inversed) {
+                    auto new_condition = allocator.alloc<AstExprBinary>(condition_as_binary->location, inversed.value(), condition_as_binary->left, condition_as_binary->right);
+                    condition = new_condition;
+                    tagOneTrue(elsebody, no_do_end);
+                    tagOneTrue(elsebody, skip_indent);
+                    thenbody = allocateBlockFromSingleStat(allocator, elsebody);
+                    tagOneTrue(thenbody, no_do_end);
+                    elsebody = nullptr;
+                }
+            }
+        }
+
         appendStr(result, std::string("if").append(separators.post_keyword_expr_open));
         appendNode(condition, "stat_if->condition")
         appendStr(result, std::string(separators.post_keyword_expr_close).append("then")
@@ -671,18 +704,18 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         appendStr(result, separators.block);
         appendIndents(result);
 
-        if (main_stat_as_if->elsebody) {
+        if (elsebody) {
             appendStr(result, "else");
 
-            if (auto else_body_as_if = main_stat_as_if->elsebody->as<AstStatIf>()) {
+            if (auto else_body_as_if = elsebody->as<AstStatIf>()) {
                 appendNode(else_body_as_if, "stat_if->elsebody");
                 goto IF_BRANCH_OMIT_END;
             } else {
                 appendStr(result, separators.block);
 
                 incrementIndent();
-                tagOneTrue(main_stat_as_if->elsebody, no_do_end)
-                    appendNode(main_stat_as_if->elsebody, "stat_if->elsebody")
+                tagOneTrue(elsebody, no_do_end)
+                    appendNode(elsebody, "stat_if->elsebody")
                 decrementIndent();
 
                 appendStr(result, separators.block);
