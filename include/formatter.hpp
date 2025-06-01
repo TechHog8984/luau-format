@@ -156,7 +156,7 @@ private:
     std::optional<std::string> formatNode(AstNode* node);
     std::optional<std::string> formatNode(AstLocal* local);
 
-    size_t appendOptionalSemicolon(std::string& current, std::string& result, NodeTag& main_tag);
+    size_t appendOptionalSemicolon(std::string& current, std::string& result);
 
     bool canSimplifyRepeatBody(AstStatRepeat* main_stat, SimplifyResult& condition_simplified);
 
