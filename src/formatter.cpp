@@ -193,8 +193,16 @@ void AstFormatter::insertEnd(std::string& result, const char* begin, const char*
     result.insert(result.end(), begin, end);
 }
 
-#define appendNode(node, name) appendNode2(node, name, false)
-#define appendNode2(node, name, is_first) { \
+#define appendNode(node, name) { \
+    auto format_result = formatNode(node); \
+    if (!format_result) { \
+        reportError(std::string("failed to append ").append(name)); \
+        return std::nullopt; \
+    } \
+    auto value = format_result.value(); \
+    appendStr(result, value); \
+}
+#define appendBlockNode(node, name, is_first) { \
     auto format_result = formatNode(node); \
     if (!format_result) { \
         reportError(std::string("failed to append ").append(name)); \
@@ -205,6 +213,8 @@ void AstFormatter::insertEnd(std::string& result, const char* begin, const char*
         current.erase(current.size() - value.size(), 1); \
         value.erase(0, 1); \
     } \
+    if (!is_first && node->asStat()) \
+        appendOptionalSemicolon(result, value); \
     appendStr(result, value); \
 }
 
@@ -332,14 +342,13 @@ size_t rewindPastFirstSpace(std::string& string, bool include_newlines = false) 
 
     return std::string::npos;
 }
-size_t AstFormatter::appendOptionalSemicolon(std::string& current, std::string& result, NodeTag& main_tag) {
-    if (separators.stat_has_semicolon || main_tag.inside_table_list || main_tag.inside_tuple)
+size_t AstFormatter::appendOptionalSemicolon(std::string& current, std::string& result) {
+    if (separators.stat_has_semicolon)
         return std::string::npos;
 
-    bool is_at_beginning_of_line = current.empty() ? true : (current.at(rewindPastFirstSpace(current, true)) == separators.stat[0]);
-    if (is_at_beginning_of_line) {
+    if (!result.empty() && result.at(0) == '(') {
         size_t pos = result.size();
-        appendChar(result, ';');
+        appendChar(current, ';');
         return pos;
     }
 
@@ -446,12 +455,10 @@ bool AstFormatter::canSimplifyRepeatBody(AstStatRepeat* main_stat, SimplifyResul
 
 std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
     std::string result;
-    auto& main_tag = getNodeTag(main_expr);
     auto main_expr_simplified = simplifier.simplify(main_expr);
     main_expr = main_expr_simplified.toExpr();
 
     if (main_expr_simplified.group) {
-        appendOptionalSemicolon(current, result, main_tag);
         appendChar(result, '(');
     }
 
@@ -639,7 +646,7 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
                 if (getNodeTag(stat).dont_format)
                     continue;
                 appendIndents(result);
-                appendNode2(stat, std::string("stat_block->body.data[").append(convertNumber(i) += ']'), is_first)
+                appendBlockNode(stat, std::string("stat_block->body.data[").append(convertNumber(i) += ']'), is_first)
                 if (!(main_tag.skip_last_stat_separator && i == last))
                     appendStr(result, separators.stat);
                 is_first = false;
