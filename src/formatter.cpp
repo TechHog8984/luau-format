@@ -444,6 +444,19 @@ bool AstFormatter::canSimplifyRepeatBody(AstStatRepeat* main_stat, SimplifyResul
     return !found;
 }
 
+class InsideTableVisitor : public AstVisitor {
+public:
+    InsideTableVisitor() {}
+
+    bool visit(AstExpr* expr) {
+        AstFormatter::getNodeTag(expr).inside_table_list = true;
+        return true;
+    }
+    bool visit(AstStatBlock* stat) {
+        return false;
+    }
+};
+
 std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
     std::string result;
     auto& main_tag = getNodeTag(main_expr);
@@ -522,7 +535,8 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
                             appendStr(result, separators.equals);
                             break;
                     }
-                    tagOneTrue(item.value, inside_table_list)
+                    InsideTableVisitor visitor;
+                    item.value->visit(&visitor);
                     appendNode(item.value, std::string("table->items.data[").append(convertNumber(i)).append("].value"))
                     appendStr(result, separators.table_item);
                 }
