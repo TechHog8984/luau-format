@@ -10,7 +10,7 @@
 using namespace Luau;
 
 AstExpr* getRootExpr(AstExpr* expr, bool safe = false);
-uint8_t isExpressionTruthy(AstExpr* expr);
+uint8_t isExpressionTruthy(AstExpr* expr, bool allow_globals = false);
 std::string convertNumber(double value);
 std::string fixString(AstArray<char> value);
 bool equalsCharArray(const AstArray<char> left, const AstArray<char> right);
@@ -175,12 +175,13 @@ class AstSimplifier {
 public:
     bool disabled;
     bool simplify_lua_calls;
+    bool assume_globals;
 
     RecordTableReplaceVisitor* record_table_replace_visitor = nullptr;
     ListTableReplaceVisitor* list_table_replace_visitor = nullptr;
     LPHControlFlowVisitor* lph_control_flow_visitor = nullptr;
 
-    AstSimplifier(Allocator& allocator, bool safe = true, bool disabled = false, bool simplify_lua_calls = false);
+    AstSimplifier(Allocator& allocator, bool safe = true, bool disabled = false, bool simplify_lua_calls = false, bool assume_globals = false);
 
     typedef std::optional<SimplifyResult> (*simplifyHook)(AstSimplifier*, Allocator&, AstExpr*, bool, void*);
 

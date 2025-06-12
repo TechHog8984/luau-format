@@ -111,6 +111,7 @@ public:
         bool simplify_expressions;
         bool optimizations;
         bool lua_calls;
+        bool assume_globals;
 
         bool record_table_replace;
         bool list_table_replace;
@@ -121,7 +122,7 @@ public:
 
         FormatOptions(
             OutputType output_type = Beautified, bool simplify_expressions = true,
-            bool optimizations = false, bool lua_calls = false,
+            bool optimizations = false, bool lua_calls = false, bool assume_globals = false,
             bool record_table_replace = false, bool list_table_replace = false,
             bool lph_control_flow = false,
             const char* separator_stat = nullptr, const char* separator_block = nullptr

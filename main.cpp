@@ -124,6 +124,10 @@ int main(int argc, char** argv) {
     bool no_simplify = false;
     bool optimizations = false;
     bool lua_calls = false;
+    bool assume_globals = false;
+
+    const char* sep_stat = nullptr;
+    const char* sep_block = nullptr;
 
     bool solve_record_table = false;
     bool solve_list_table = false;
@@ -131,9 +135,6 @@ int main(int argc, char** argv) {
 
     const char* input_path = argv[1];
     const char* output_path = nullptr;
-
-    const char* sep_stat = nullptr;
-    const char* sep_block = nullptr;
 
     for (unsigned i = 2; i < (unsigned) argc; i++) {
         const char* arg = argv[i];
@@ -147,6 +148,9 @@ int main(int argc, char** argv) {
             lua_calls = true;
         } else if (strcmp(arg, "--optimize") == 0) {
             optimizations = true;
+        } else if (strcmp(arg, "--assume_globals") == 0) {
+            assume_globals = true;
+
         } else if (!handleRecordOption("--sep_stat", arg, true)) {
             sep_stat = arg;
         } else if (!handleRecordOption("--sep_block", arg, true)) {
@@ -208,7 +212,7 @@ int main(int argc, char** argv) {
 
         AstFormatter::FormatOptions format_options(
             output_type,
-            !no_simplify, optimizations, lua_calls,
+            !no_simplify, optimizations, lua_calls, assume_globals,
             solve_record_table, solve_list_table, lph_control_flow,
             sep_stat, sep_block
         );

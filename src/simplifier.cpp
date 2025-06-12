@@ -46,7 +46,7 @@ AstExpr* getRootExpr(AstExpr* expr, bool safe) {
     1 -> truthy
     2 -> can't be determined
 */
-uint8_t isExpressionTruthy(AstExpr* expr) {
+uint8_t isExpressionTruthy(AstExpr* expr, bool allow_globals) {
     expr = getRootExpr(expr, false);
 
     if (expr->is<AstExprConstantNil>())
@@ -55,6 +55,207 @@ uint8_t isExpressionTruthy(AstExpr* expr) {
         return expr_constant_bool->value;
     else if (expr->is<AstExprConstantNumber>() || expr->is<AstExprConstantString>() || expr->is<AstExprFunction>() || expr->is<AstExprTable>() || expr->is<AstExprInterpString>())
         return 1;
+    else if (auto expr_index_name = expr->as<AstExprIndexName>()) {
+        if (allow_globals) {
+            auto global = getRootExpr(expr_index_name->expr, false)->as<AstExprGlobal>();
+            if (!global)
+                return 0;
+
+            const char* global_name = global->name.value;
+            const char* index = expr_index_name->index.value;
+
+            if (strcmp(global_name, "bit32") == 0)
+                return strcmp(index, "arshift") == 0
+                    || strcmp(index, "band") == 0
+                    || strcmp(index, "bnot") == 0
+                    || strcmp(index, "bnot") == 0
+                    || strcmp(index, "bor") == 0
+                    || strcmp(index, "btest") == 0
+                    || strcmp(index, "bxor") == 0
+                    || strcmp(index, "byteswap") == 0
+                    || strcmp(index, "countlz") == 0
+                    || strcmp(index, "countrz") == 0
+                    || strcmp(index, "extract") == 0
+                    || strcmp(index, "replace") == 0
+                    || strcmp(index, "lrotate") == 0
+                    || strcmp(index, "lshift") == 0
+                    || strcmp(index, "rrotate") == 0
+                    || strcmp(index, "rshift") == 0;
+            else if (strcmp(global_name, "buffer") == 0)
+                return strcmp(index, "create") == 0
+                    || strcmp(index, "fromstring") == 0
+                    || strcmp(index, "tostring") == 0
+                    || strcmp(index, "len") == 0
+                    || strcmp(index, "readbits") == 0
+                    || strcmp(index, "readi8") == 0
+                    || strcmp(index, "readu8") == 0
+                    || strcmp(index, "readi16") == 0
+                    || strcmp(index, "readu16") == 0
+                    || strcmp(index, "readi32") == 0
+                    || strcmp(index, "readu32") == 0
+                    || strcmp(index, "readf32") == 0
+                    || strcmp(index, "readf64") == 0
+                    || strcmp(index, "writebits") == 0
+                    || strcmp(index, "writei8") == 0
+                    || strcmp(index, "writeu8") == 0
+                    || strcmp(index, "writei16") == 0
+                    || strcmp(index, "writeu16") == 0
+                    || strcmp(index, "writei32") == 0
+                    || strcmp(index, "writeu32") == 0
+                    || strcmp(index, "writef32") == 0
+                    || strcmp(index, "writef64") == 0
+                    || strcmp(index, "readstring") == 0
+                    || strcmp(index, "writestring") == 0
+                    || strcmp(index, "copy") == 0
+                    || strcmp(index, "fill") == 0;
+            else if (strcmp(global_name, "coroutine") == 0)
+                return strcmp(index, "close") == 0
+                    || strcmp(index, "create") == 0
+                    || strcmp(index, "isyieldable") == 0
+                    || strcmp(index, "resume") == 0
+                    || strcmp(index, "running") == 0
+                    || strcmp(index, "status") == 0
+                    || strcmp(index, "wrap") == 0
+                    || strcmp(index, "yield") == 0;
+            else if (strcmp(global_name, "debug") == 0)
+                return strcmp(index, "traceback") == 0
+                    || strcmp(index, "info") == 0;
+                // TODO: roblox setting
+                    // || strcmp(index, "profilebegin") == 0
+                    // || strcmp(index, "profileend") == 0
+                    // || strcmp(index, "getmemorycategory") == 0
+                    // || strcmp(index, "setmemorycategory") == 0
+                    // || strcmp(index, "resetmemorycategory") == 0
+                    // || strcmp(index, "dumpcodesize") == 0;
+            else if (strcmp(global_name, "math") == 0)
+                return strcmp(index, "abs") == 0
+                    || strcmp(index, "acos") == 0
+                    || strcmp(index, "asin") == 0
+                    || strcmp(index, "atan") == 0
+                    || strcmp(index, "atan2") == 0
+                    || strcmp(index, "ceil") == 0
+                    || strcmp(index, "clamp") == 0
+                    || strcmp(index, "cos") == 0
+                    || strcmp(index, "cosh") == 0
+                    || strcmp(index, "deg") == 0
+                    || strcmp(index, "exp") == 0
+                    || strcmp(index, "floor") == 0
+                    || strcmp(index, "fmod") == 0
+                    || strcmp(index, "frexp") == 0
+                    || strcmp(index, "ldexp") == 0
+                    || strcmp(index, "lerp") == 0
+                    || strcmp(index, "log") == 0
+                    || strcmp(index, "log10") == 0
+                    || strcmp(index, "map") == 0
+                    || strcmp(index, "max") == 0
+                    || strcmp(index, "min") == 0
+                    || strcmp(index, "modf") == 0
+                    || strcmp(index, "noise") == 0
+                    || strcmp(index, "pow") == 0
+                    || strcmp(index, "rad") == 0
+                    || strcmp(index, "random") == 0
+                    || strcmp(index, "randomseed") == 0
+                    || strcmp(index, "round") == 0
+                    || strcmp(index, "sign") == 0
+                    || strcmp(index, "sin") == 0
+                    || strcmp(index, "sinh") == 0
+                    || strcmp(index, "sqrt") == 0
+                    || strcmp(index, "tan") == 0
+                    || strcmp(index, "tanh") == 0
+
+                    || strcmp(index, "huge") == 0
+                    || strcmp(index, "pi") == 0;
+            else if (strcmp(global_name, "os") == 0)
+                return strcmp(index, "clock") == 0
+                    || strcmp(index, "date") == 0
+                    || strcmp(index, "difftime") == 0
+                    || strcmp(index, "time");
+            else if (strcmp(global_name, "string") == 0)
+                return strcmp(index, "byte") == 0
+                    || strcmp(index, "char") == 0
+                    || strcmp(index, "find") == 0
+                    || strcmp(index, "format") == 0
+                    || strcmp(index, "gmatch") == 0
+                    || strcmp(index, "gsub") == 0
+                    || strcmp(index, "len") == 0
+                    || strcmp(index, "lower") == 0
+                    || strcmp(index, "match") == 0
+                    || strcmp(index, "pack") == 0
+                    || strcmp(index, "packsize") == 0
+                    || strcmp(index, "rep") == 0
+                    || strcmp(index, "reverse") == 0
+                    || strcmp(index, "split") == 0
+                    || strcmp(index, "sub") == 0
+                    || strcmp(index, "unpack") == 0
+                    || strcmp(index, "upper") == 0;
+            else if (strcmp(global_name, "table") == 0)
+                return strcmp(index, "clear") == 0
+                    || strcmp(index, "clone") == 0
+                    || strcmp(index, "concat") == 0
+                    || strcmp(index, "create") == 0
+                    || strcmp(index, "find") == 0
+                    || strcmp(index, "freeze") == 0
+                    || strcmp(index, "insert") == 0
+                    || strcmp(index, "isfrozen") == 0
+                    || strcmp(index, "maxn") == 0
+                    || strcmp(index, "move") == 0
+                    || strcmp(index, "pack") == 0
+                    || strcmp(index, "remove") == 0
+                    || strcmp(index, "sort") == 0
+                    || strcmp(index, "unpack") == 0;
+            // TODO: roblox setting
+            // else if (strcmp(global_name, "task") == 0)
+            //     return strcmp(index, "spawn") == 0
+            //         || strcmp(index, "defer") == 0
+            //         || strcmp(index, "delay") == 0
+            //         || strcmp(index, "desynchronize") == 0
+            //         || strcmp(index, "synchronize") == 0
+            //         || strcmp(index, "wait") == 0
+            //         || strcmp(index, "cancel") == 0;
+            else if (strcmp(global_name, "utf8") == 0)
+                return strcmp(index, "char") == 0
+                    || strcmp(index, "codes") == 0
+                    || strcmp(index, "codepoint") == 0
+                    || strcmp(index, "len") == 0
+                    || strcmp(index, "offset") == 0
+                    || strcmp(index, "graphemes") == 0
+                    || strcmp(index, "nfcnormalize") == 0
+                    || strcmp(index, "nfdnormalize") == 0;
+        }
+    } else if (auto global_expr = expr->as<AstExprGlobal>()) {
+        if (allow_globals) {
+            const char* global_name = global_expr->name.value;
+
+            if (strcmp(global_name, "assert") == 0
+                || strcmp(global_name, "error") == 0
+                || strcmp(global_name, "gcinfo") == 0
+                || strcmp(global_name, "getmetatable") == 0
+                || strcmp(global_name, "ipairs") == 0
+                || strcmp(global_name, "loadstring") == 0
+                || strcmp(global_name, "newproxy") == 0
+                || strcmp(global_name, "next") == 0
+                || strcmp(global_name, "pairs") == 0
+                || strcmp(global_name, "pcall") == 0
+                || strcmp(global_name, "print") == 0
+                || strcmp(global_name, "rawequal") == 0
+                || strcmp(global_name, "rawget") == 0
+                || strcmp(global_name, "rawlen") == 0
+                || strcmp(global_name, "rawset") == 0
+                || strcmp(global_name, "require") == 0
+                || strcmp(global_name, "select") == 0
+                || strcmp(global_name, "setmetatable") == 0
+                || strcmp(global_name, "tonumber") == 0
+                || strcmp(global_name, "tostring") == 0
+                || strcmp(global_name, "type") == 0
+                || strcmp(global_name, "unpack") == 0
+                || strcmp(global_name, "xpcall") == 0
+
+                || strcmp(global_name, "_G") == 0
+                || strcmp(global_name, "_VERSION") == 0
+            )
+                return 1;
+        }
+    }
 
     return 2;
 }
@@ -1079,11 +1280,11 @@ std::optional<AstArray<char>> SimplifyResult::asString() {
     }
 }
 uint8_t SimplifyResult::isTruthy() {
-    return isExpressionTruthy(toExpr());
+    return isExpressionTruthy(toExpr(), simplifier->assume_globals);
 }
 
-AstSimplifier::AstSimplifier(Allocator& allocator, bool safe, bool disabled, bool simplify_lua_calls) :
-    allocator(allocator), safe(safe), disabled(disabled), simplify_lua_calls(simplify_lua_calls) {}
+AstSimplifier::AstSimplifier(Allocator& allocator, bool safe, bool disabled, bool simplify_lua_calls, bool assume_globals) :
+    allocator(allocator), safe(safe), disabled(disabled), simplify_lua_calls(simplify_lua_calls), assume_globals(assume_globals) {}
 
 Allocator& AstSimplifier::getAllocator() {
     return allocator;
@@ -1096,7 +1297,7 @@ std::optional<std::vector<AstExpr*>> AstSimplifier::getDeterminableList(std::vec
     for (size_t i = 0; i < list_size; i++) {
         AstExpr* value = simplifyToExpr(list[i]);
 
-        if (isExpressionTruthy(value) < 2) // if a value can be determined as truthy, we consider it "determinable"
+        if (isExpressionTruthy(value, assume_globals) < 2) // if a value can be determined as truthy, we consider it "determinable"
             determinable_list.push_back(value);
         else if (auto value_call = value->as<AstExprCall>()) {
             if (auto func = getRootExpr(value_call->func, false)->as<AstExprFunction>()) {
@@ -1447,7 +1648,7 @@ SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* h
                     case SimplifyResult::String:
                         return SimplifyResult(this, false, group);
                     case SimplifyResult::Other: {
-                        auto is_truthy = isExpressionTruthy(expr_simplified.other_value);
+                        auto is_truthy = isExpressionTruthy(expr_simplified.other_value, assume_globals);
                         if (is_truthy < 2)
                             return SimplifyResult(this, !is_truthy, group);
                         else if (auto expr_binary = expr_simplified.toExpr()->as<AstExprBinary>()) {
@@ -1528,12 +1729,13 @@ SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* h
         const bool both_number_valid = left_number_valid && right_number_valid;
         const bool both_string_valid = left_string_valid && right_string_valid;
 
-        const bool left_is_other = left_type == SimplifyResult::Other;
-        const bool right_is_other = right_type == SimplifyResult::Other;
+        // const bool left_is_other = left_type == SimplifyResult::Other;
+        // const bool right_is_other = right_type == SimplifyResult::Other;
 
         const bool both_have_same_type = left_type == right_type;
 
-        const bool can_compare_equality = (!left_is_other && !right_is_other);
+        // const bool can_compare_equality = (!left_is_other && !right_is_other);
+        const bool can_compare_equality = isExpressionTruthy(left_simplified.toExpr(), assume_globals) < 2 && isExpressionTruthy(right_simplified.toExpr(), assume_globals) < 2;
 
         #define genericNumberCase(op, value) case AstExprBinary::op: \
             if (both_number_valid) \
@@ -1607,14 +1809,14 @@ SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* h
 
             case AstExprBinary::And:
                 if (can_compare_equality) {
-                    int left_truthy = isExpressionTruthy(left_simplified.toExpr());
+                    int left_truthy = isExpressionTruthy(left_simplified.toExpr(), assume_globals);
                     if (left_truthy < 2)
                         return left_truthy ? right_simplified : left_simplified;
                 }
                 break;
             case AstExprBinary::Or:
                 if (can_compare_equality) {
-                    int left_truthy = isExpressionTruthy(left_simplified.toExpr());
+                    int left_truthy = isExpressionTruthy(left_simplified.toExpr(), assume_globals);
                     if (left_truthy < 2)
                         return left_truthy ? left_simplified : right_simplified;
                 }
