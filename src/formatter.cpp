@@ -686,12 +686,14 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         auto condition_is_truthy = simplifier.simplify(condition).isTruthy();
         if (options.optimizations && condition_is_truthy != 2) {
             if (condition_is_truthy) {
-                skip_indent = true;
-                tagOneTrue(thenbody, no_do_end)
+                // NOTE: intentional `do end` to avoid double returns
+                // skip_indent = true;
+                // tagOneTrue(thenbody, no_do_end)
                 appendNode(thenbody, "optimized stat_if->thenbody")
             } else if (elsebody) {
-                skip_indent = true;
-                tagOneTrue(elsebody, no_do_end)
+                // NOTE: intentional `do end` to avoid double returns
+                // skip_indent = true;
+                // tagOneTrue(elsebody, no_do_end)
                 appendNode(elsebody, "optimized stat_if->elsebody")
             } else
                 appendComment(result, "optimized-out if statement"); // TODO: this exists because there's an indent; find a better fix
