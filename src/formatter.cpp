@@ -590,8 +590,14 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
             auto& string = string_list.data[0];
             insertEnd(result, string.begin(), string.end());
             for (size_t i = 0; i < expr_list_size; i++) {
+                const auto& item = expr_list.data[i];
+                const bool item_is_table = item->is<AstExprTable>();
                 appendChar(result, '{');
-                appendNode(expr_list.data[i], std::string("interp_string->expressions.data[").append(convertNumber(i)) += ']')
+                if (item_is_table)
+                    appendChar(result, ' ');
+                appendNode(item, std::string("interp_string->expressions.data[").append(convertNumber(i)) += ']')
+                if (item_is_table)
+                    appendChar(result, ' ');
                 appendChar(result, '}');
                 auto& string = string_list.data[i + 1];
                 insertEnd(result, string.begin(), string.end());
