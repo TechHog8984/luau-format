@@ -1269,10 +1269,11 @@ std::optional<AstArray<char>> SimplifyResult::asString() {
     switch (type) {
         case Number: {
             std::string str = convertNumber(number_value);
-            char* allocated = static_cast<char*>(simplifier->getAllocator().allocate(str.size()));
-            strcpy(allocated, str.data());
+            const size_t len = str.size();
+            char* allocated = static_cast<char*>(simplifier->getAllocator().allocate(len));
+            memcpy(allocated, str.data(), len);
             result.data = allocated;
-            result.size = str.size();
+            result.size = len;
             return result;
         }
         default:

@@ -9,6 +9,7 @@ LUAU_INCLUDE_BUILD=$(echo $LUAU_INCLUDE | sed 's/dependencies\//..\/..\/..\/depe
 PLATFORM=linux
 RELEASE_FLAGS=
 STATIC_FLAGS=-static
+ASAN_FLAGS=
 TEST_DEFINES=
 
 while [[ $# -gt 0 ]]; do
@@ -35,6 +36,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --failtests)
             TEST_DEFINES=-DFAILTESTS
+            shift
+            ;;
+        --asan)
+            ASAN_FLAGS=-fsanitize=address
             shift
             ;;
         *)
@@ -94,7 +99,7 @@ mkdir $luauformatbuilddir
 
 echo "building luau-format..."
 pushd $luauformatbuilddir
-$compiler -std=c++17 -g -Wall $RELEASE_FLAGS -c ../../../src/* -I../../../include $LUAU_INCLUDE_BUILD -L../Luau -lluau
+$compiler -std=c++17 -g -Wall $RELEASE_FLAGS $ASAN_FLAGS -c ../../../src/* -I../../../include $LUAU_INCLUDE_BUILD -L../Luau -lluau
 ar rcs libluau-format.a *.o
 popd
 echo "luau-format built"
@@ -104,11 +109,11 @@ if [[ $TEST ]]; then
     if [[ ! $TEST_DEFINES = "" ]]; then
         echo "NOTE: tests will fail due to --failtests being passed"
     fi
-    $compiler -std=c++17 $STATIC_FLAGS -o $outfile -g -Wall tests/* -Itests -Iinclude $LUAU_INCLUDE $TEST_DEFINES -L$luauformatbuilddir -lluau-format -L$luaubuilddir -lluau
+    $compiler -std=c++17 $ASAN_FLAGS $STATIC_FLAGS -o $outfile -g -Wall tests/* -Itests -Iinclude $LUAU_INCLUDE $TEST_DEFINES -L$luauformatbuilddir -lluau-format -L$luaubuilddir -lluau
     echo "tests built to $outfile"
     exit
 fi
 
 echo "buildling cli..."
-$compiler -std=c++17 -g -Wall $RELEASE_FLAGS $STATIC_FLAGS -o $outfile main.cpp -Iinclude $LUAU_INCLUDE -L$luauformatbuilddir -lluau-format -L$luaubuilddir -lluau
+$compiler -std=c++17 -g -Wall $RELEASE_FLAGS $ASAN_FLAGS $STATIC_FLAGS -o $outfile main.cpp -Iinclude $LUAU_INCLUDE -L$luauformatbuilddir -lluau-format -L$luaubuilddir -lluau
 echo "cli built to $outfile"

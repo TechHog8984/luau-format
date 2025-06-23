@@ -349,8 +349,7 @@ size_t AstFormatter::appendOptionalSemicolon(std::string& current, std::string& 
 }
 
 AstFormatter::NodeTag& AstFormatter::getNodeTag(AstNode* node) {
-    if (node_tag_map.find(node) == node_tag_map.end())
-        node_tag_map.emplace(node, NodeTag{});
+    node_tag_map.emplace(node, NodeTag{});
 
     return node_tag_map.at(node);
 }
