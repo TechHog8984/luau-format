@@ -133,7 +133,6 @@ int main(int argc, char** argv) {
 
     bool solve_record_table = false;
     bool solve_list_table = false;
-    bool lph_control_flow = false;
 
     const char* input_path = argv[1];
     const char* output_path = nullptr;
@@ -161,7 +160,6 @@ int main(int argc, char** argv) {
         } else if (strcmp(arg, "--luraph") == 0) {
             solve_record_table = true;
             solve_list_table = true;
-            lph_control_flow = true;
             optimizations = true;
             lua_calls = true;
         } else if (strcmp(arg, "--solve_record_table") == 0) {

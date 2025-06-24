@@ -739,72 +739,6 @@ RET:
     return false;
 }
 
-
-class LPHControlFlowSolver {
-    Allocator& allocator;
-    AstSimplifier& simplifier;
-
-    std::unordered_map<double, AstStatBlock*> cfposition_to_block_map;
-    std::vector<double> cfposition_set_order;
-
-    void tryHandleSet_cftable(AstStat* stat);
-    void tryHandleSet_cfposition(AstStat* stat);
-    int handleIfBlock(AstStatBlock* main_block);
-    int handleIf(AstStatIf* main_if, bool passes);
-public:
-    std::unordered_map<double, double>& cftable;
-    double cfposition;
-    AstLocal* cftable_local;
-    AstLocal* cfposition_local;
-
-    LPHControlFlowSolver(Allocator& allocator, AstSimplifier& simplifier, std::unordered_map<double, double>& cftable, double cfposition, AstLocal* cftable_local, AstLocal* cfposition_local)
-        : allocator(allocator), simplifier(simplifier), cftable(cftable), cfposition(cfposition), cftable_local(cftable_local), cfposition_local(cfposition_local)
-    {
-        cfposition_set_order.push_back(cfposition);
-    }
-
-    void handleLoopBody(AstStat* main_loop_stat, AstArray<AstStat*> main_loop_body) {
-        if (main_loop_body.size < 1)
-            return;
-
-        auto first_stat_as_if = main_loop_body.data[0]->as<AstStatIf>();
-        if (!first_stat_as_if)
-            return;
-
-        auto condition = Condition::tryCreateCondition(simplifier, first_stat_as_if->condition->as<AstExprBinary>(), cfposition_local);
-        if (!condition)
-            return;
-
-        while (!handleIf(first_stat_as_if, condition.value().passes(cfposition)))
-            ;
-
-        std::vector<AstStat*> generated_block_list;
-        generated_block_list.reserve(cfposition_to_block_map.size()); // not accurate
-        for (size_t i = 0; i < cfposition_set_order.size(); i++) {
-            double& value = cfposition_set_order.at(i);
-            if (cfposition_to_block_map.find(value) == cfposition_to_block_map.end()) {
-                fprintf(stderr, "no block found with cfposition %.f", value);
-                return;
-            }
-
-            auto stat = cfposition_to_block_map.at(value);
-
-            for (size_t j = 0; j < stat->body.size; j++) {
-                auto inner_stat = stat->body.data[j];
-                if (inner_stat->is<AstStatBreak>() || inner_stat->is<AstStatContinue>())
-                    continue;
-                generated_block_list.push_back(inner_stat);
-            }
-        }
-        AstStatBlock* generated_block = allocator.alloc<AstStatBlock>(Location(), copy(allocator, generated_block_list.data(), generated_block_list.size()));;
-
-        AstFormatter::getNodeTag(main_loop_stat).stat_replacement = generated_block;
-        auto& generated_block_tag = AstFormatter::getNodeTag(generated_block);
-        generated_block_tag.no_do_end = true;
-        generated_block_tag.skip_indent = true;
-    }
-};
-
 // typedef struct {
 //     AstArray<AstStat*> body;
 // } InfiniteLoop;
@@ -906,48 +840,49 @@ std::optional<std::vector<AstExpr*>> AstSimplifier::getDeterminableList(std::vec
         if (isExpressionTruthy(value, assume_globals) < 2) // if a value can be determined as truthy, we consider it "determinable"
             determinable_list.push_back(value);
         else if (auto value_call = value->as<AstExprCall>()) {
-            if (auto func = getRootExpr(value_call->func, false)->as<AstExprFunction>()) {
-                auto& body = func->body->body;
-                // we need to ensure that there is only one return
-                // this could easily be improved using a visitor that looks for return stats
-                if (body.size != 1)
-                    return std::nullopt;
+            auto func = getRootExpr(value_call->func, false)->as<AstExprFunction>();
+            if (!func)
+                return std::nullopt;
 
-                auto return_stat = body.data[0]->as<AstStatReturn>();
-                if (!return_stat)
-                    return std::nullopt;
+            auto& body = func->body->body;
+            // we need to ensure that there is only one return
+            // this could easily be improved using a visitor that looks for return stats
+            if (body.size != 1)
+                return std::nullopt;
 
-                std::vector<AstExpr*> sub_list;
+            auto return_stat = body.data[0]->as<AstStatReturn>();
+            if (!return_stat)
+                return std::nullopt;
 
-                // bool vararg = func->args.size == 0 && func->vararg;
-                auto& return_list = return_stat->list;
-                auto& return_count = return_list.size;
-                if (return_count == 0) {
-                    determinable_list.push_back(allocator.alloc<AstExprConstantNil>(Location(Position(0, 0), 0)));
-                    continue;
+            std::vector<AstExpr*> sub_list;
+
+            // bool vararg = func->args.size == 0 && func->vararg;
+            auto& return_list = return_stat->list;
+            auto& return_count = return_list.size;
+            if (return_count == 0) {
+                determinable_list.push_back(allocator.alloc<AstExprConstantNil>(Location(Position(0, 0), 0)));
+                continue;
+            }
+
+            if (i + 1 == list_size) {
+                for (unsigned index = 0; index < return_count; index++)
+                    sub_list.push_back(return_list.data[index]);
+
+                if (getRootExpr(sub_list.back())->is<AstExprVarargs>(), false) {
+                    sub_list.pop_back();
+                    for (size_t j = 0; j < value_call->args.size; j++) {
+                        auto& arg = value_call->args.data[j];
+                        sub_list.push_back(arg);
+                    }
                 }
 
-                if (i + 1 == list_size) {
-                    for (unsigned index = 0; index < return_count; index++)
-                        sub_list.push_back(return_list.data[index]);
-
-                    if (getRootExpr(sub_list.back())->is<AstExprVarargs>(), false) {
-                        sub_list.pop_back();
-                        for (size_t j = 0; j < value_call->args.size; j++) {
-                            auto& arg = value_call->args.data[j];
-                            sub_list.push_back(arg);
-                        }
-                    }
-
-                    auto sub_determinable_list = getDeterminableList(sub_list);
-                    if (sub_determinable_list.has_value()) {
-                        determinable_list.insert(std::end(determinable_list), std::begin(sub_determinable_list.value()), std::end(sub_determinable_list.value()));
-                    } else
-                        return std::nullopt;
-                } else
-                    determinable_list.push_back(return_list.data[0]);
+                auto sub_determinable_list = getDeterminableList(sub_list);
+                if (sub_determinable_list.has_value())
+                    determinable_list.insert(std::end(determinable_list), std::begin(sub_determinable_list.value()), std::end(sub_determinable_list.value()));
+                else
+                    return std::nullopt;
             } else
-                return std::nullopt;
+                determinable_list.push_back(return_list.data[0]);
         } else
             return std::nullopt;
     }
@@ -1210,7 +1145,6 @@ std::optional<AstExprBinary::Op> inverseBinaryOp(AstExprBinary::Op op) {
 }
 
 SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* hook_data) {
-    // TODO: maybe this should be a pointer passed to getrootexpr that will become true if it encounters a group, instead of just checking if the outermost expr is group
     bool group = expr->is<AstExprGroup>();
 
     if (disabled)
@@ -1335,12 +1269,12 @@ SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* h
         const bool both_number_valid = left_number_valid && right_number_valid;
         const bool both_string_valid = left_string_valid && right_string_valid;
 
-        // const bool left_is_other = left_type == SimplifyResult::Other;
-        // const bool right_is_other = right_type == SimplifyResult::Other;
-
         const bool both_have_same_type = left_type == right_type;
 
+        // const bool left_is_other = left_type == SimplifyResult::Other;
+        // const bool right_is_other = right_type == SimplifyResult::Other;
         // const bool can_compare_equality = (!left_is_other && !right_is_other);
+
         const bool can_compare_equality = isExpressionTruthy(left_simplified.toExpr(), assume_globals) < 2 && isExpressionTruthy(right_simplified.toExpr(), assume_globals) < 2;
 
         #define genericNumberCase(op, value) case AstExprBinary::op: \

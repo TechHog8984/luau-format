@@ -131,7 +131,7 @@ AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, Allocato
     return formatter.formatRoot(root);
 }
 
-#define tagOneTrue(node, property) getNodeTag(node).property = true;
+#define tagOneTrue(node, property) AstFormatter::getNodeTag(node).property = true;
 #define tagAllTrue(array, property) { \
     for (size_t i = 0; i < array.size; i++) \
         tagOneTrue(array.data[i], property) \
@@ -368,15 +368,6 @@ public:
         return false;
     }
 
-    bool visit(AstStatBlock*) override {
-        return true;
-    }
-    bool visit(AstStatIf*) override {
-        return true;
-    }
-    bool visit(AstStatWhile*) override {
-        return true;
-    }
     bool visit(AstStatRepeat* stat_repeat) override {
         return stat_repeat == main_stat;
     }
@@ -449,7 +440,7 @@ public:
     InsideTableVisitor() {}
 
     bool visit(AstExpr* expr) {
-        AstFormatter::getNodeTag(expr).inside_table_list = true;
+        tagOneTrue(expr, inside_table_list);
         return true;
     }
     bool visit(AstStatBlock* stat) {
@@ -469,9 +460,7 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
     }
 
     if (auto main_expr_as_group = main_expr->as<AstExprGroup>()) {
-        // appendChar(result, '(');
         appendNode(main_expr_as_group->expr, "expr_group->expr")
-        // appendChar(result, ')');
     } else if (main_expr->is<AstExprConstantNil>()) {
         appendStr(result, "nil");
     } else if (auto main_expr_as_constant_bool = main_expr->as<AstExprConstantBool>()) {
@@ -487,11 +476,6 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
     } else if (main_expr->is<AstExprVarargs>()) {
         appendStr(result, "...");
     } else if (auto main_expr_as_call = main_expr->as<AstExprCall>()) {
-        /*
-            if (!separators.stat_is_semicolon && getRootExpr(main_expr_as_call->func, false)->is<AstExprFunction>())
-                appendChar(result, ';');
-        */
-
         appendNode(main_expr_as_call->func, "call->func")
         appendChar(result, '(');
         tagAllTrue(main_expr_as_call->args, inside_tuple);
@@ -508,7 +492,6 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
         appendChar(result, ']');
     } else if (auto main_expr_as_function = main_expr->as<AstExprFunction>()) {
         appendStr(result, "function");
-
         appendFunctionBody(main_expr_as_function, "function")
     } else if (auto main_expr_as_table = main_expr->as<AstExprTable>()) {
         appendChar(result, '{');
@@ -626,13 +609,13 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         return result;
     }
 
-    if (main_tag.stat_replacement) {
-        if (main_tag.stat_replacement == main_stat) {
+    AstStat* main_stat_replacement = main_tag.stat_replacement;
+    if (main_stat_replacement) {
+        if (main_stat_replacement == main_stat) {
             fprintf(stderr, "cyclic node tag stat_replacement\n");
             exit(1);
         }
-        current_stat = nullptr;
-        return formatStat(main_tag.stat_replacement);
+        goto SKIP_FORMAT_BRANCHES;
     }
 
     // TODO: maybe just `skip_indent = main_tag.skip_indent` which will set skip_indent to desired state potentially getting around state management issues
@@ -694,7 +677,7 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
                 // tagOneTrue(elsebody, no_do_end)
                 appendNode(elsebody, "optimized stat_if->elsebody")
             } else
-                appendComment(result, "optimized-out if statement"); // TODO: this exists because there's an indent; find a better fix
+                appendComment(result, "optimized-out if statement"); // TODO: this exists because there's an indent; find a better fix (nodesimplifier will check optimizations and from there we can tag dont_format)
             goto IF_BRANCH_OMIT_END;
         }
 
@@ -765,10 +748,11 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         auto repeat_body = main_stat_as_repeat->body;
         auto repeat_condition = main_stat_as_repeat->condition;
         auto repeat_condition_simplified = simplifier.simplify(repeat_condition);
-        if (canSimplifyRepeatBody(main_stat_as_repeat, repeat_condition_simplified)) {
-            skip_indent = true; // below AstStatBlock pushes indent for first stat
-            tagOneTrue(repeat_body, no_do_end)
-            tagOneTrue(repeat_body, skip_last_stat_separator)
+        if (options.optimizations && canSimplifyRepeatBody(main_stat_as_repeat, repeat_condition_simplified)) {
+            // NOTE: intentional `do end`; see above if optimization
+            // skip_indent = true; // below AstStatBlock pushes indent for first stat
+            // tagOneTrue(repeat_body, no_do_end)
+            // tagOneTrue(repeat_body, skip_last_stat_separator)
             appendNode(repeat_body, "stat_repeat simplified body");
         } else {
             appendStr(result, std::string("repeat").append(separators.block));
@@ -881,8 +865,10 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         appendComment(result, message.c_str(), true);
     }
 
-    // note: everything you do here must be replicated in `if main_tag.stat_replacement` branch at the beginning of this function
+SKIP_FORMAT_BRANCHES:
     current_stat = nullptr;
+    if (main_stat_replacement)
+        return formatStat(main_stat_replacement);
 
     return result;
 }
