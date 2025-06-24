@@ -168,8 +168,6 @@ int main(int argc, char** argv) {
             solve_record_table = true;
         } else if (strcmp(arg, "--solve_list_table") == 0) {
             solve_list_table = true;
-        } else if (strcmp(arg, "--lph_control_flow") == 0) {
-            lph_control_flow = true;
         } else {
             fprintf(stderr, "ERROR: unrecognized option '%s'\n", arg);
             return 1;
@@ -215,7 +213,7 @@ int main(int argc, char** argv) {
         AstFormatter::FormatOptions format_options(
             output_type,
             !no_simplify, optimizations, lua_calls, assume_globals,
-            solve_record_table, solve_list_table, lph_control_flow,
+            solve_record_table, solve_list_table,
             sep_stat, sep_block
         );
         ret = tryFormatContents(

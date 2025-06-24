@@ -48,7 +48,6 @@ class AstSimplifier;
 class SimplifyResult;
 class RecordTableReplaceVisitor;
 class ListTableReplaceVisitor;
-class LPHControlFlowVisitor;
 
 class AstFormatter {
     Allocator& allocator;
@@ -95,7 +94,6 @@ class AstFormatter {
 public:
     RecordTableReplaceVisitor* record_table_replace_visitor = nullptr;
     ListTableReplaceVisitor* list_table_replace_visitor = nullptr;
-    LPHControlFlowVisitor* lph_control_flow_visitor = nullptr;
     void reportError(std::string message) {
         errors.push_back(message);
     }
@@ -117,7 +115,6 @@ public:
 
         bool record_table_replace;
         bool list_table_replace;
-        bool lph_control_flow;
 
         const char* separator_stat;
         const char* separator_block;
@@ -126,7 +123,6 @@ public:
             OutputType output_type = Beautified, bool simplify_expressions = true,
             bool optimizations = false, bool lua_calls = false, bool assume_globals = false,
             bool record_table_replace = false, bool list_table_replace = false,
-            bool lph_control_flow = false,
             const char* separator_stat = nullptr, const char* separator_block = nullptr
         );
     };

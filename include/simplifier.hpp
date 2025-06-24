@@ -114,19 +114,6 @@ public:
     bool visit(AstStatBlock* root_block) override;
 };
 
-class LPHControlFlowVisitor : public AstVisitor {
-    Allocator& allocator;
-    AstSimplifier& simplifier;
-
-public:
-    bool success = false;
-    AstStatBlock* generated_block;
-
-    LPHControlFlowVisitor(Allocator& allocator, AstSimplifier& simplifier);
-
-    bool visit(AstStatBlock* root_block) override;
-};
-
 std::optional<AstExprBinary::Op> inverseBinaryOp(AstExprBinary::Op op);
 
 class SimplifyResult {
@@ -181,7 +168,6 @@ public:
 
     RecordTableReplaceVisitor* record_table_replace_visitor = nullptr;
     ListTableReplaceVisitor* list_table_replace_visitor = nullptr;
-    LPHControlFlowVisitor* lph_control_flow_visitor = nullptr;
 
     AstSimplifier(Allocator& allocator, bool safe = true, bool disabled = false, bool simplify_lua_calls = false, bool assume_globals = false);
 

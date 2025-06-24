@@ -22,7 +22,6 @@ void displayHelp(const char* filename) {
         "  --luraph - all Luraph options plus --lua_calls and --optimize\n"
         "  --solve_record_table - solves Luraph's function table\n"
         "  --solve_list_table - solves Luraph's number table\n"
-        "  --lph_control_flow - solves Luraph's control flow\n"
     , filename);
 }
 

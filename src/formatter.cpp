@@ -41,11 +41,10 @@ void AstFormatter::copyNodeTag(AstNode* recipient, AstNode* reference) {
 AstFormatter::FormatOptions::FormatOptions(OutputType output_type, bool simplify_expressions,
     bool optimizations, bool lua_calls, bool assume_globals,
     bool record_table_replace, bool list_table_replace,
-    bool lph_control_flow,
     const char* separator_stat, const char* separator_block) :
     output_type(output_type), simplify_expressions(simplify_expressions), optimizations(optimizations), lua_calls(lua_calls),
     assume_globals(assume_globals), record_table_replace(record_table_replace), list_table_replace(list_table_replace),
-    lph_control_flow(lph_control_flow), separator_stat(separator_stat), separator_block(separator_block) {}
+    separator_stat(separator_stat), separator_block(separator_block) {}
 
 AstFormatter::AstFormatter(Allocator& allocator, AstSimplifier& simplifier, FormatOptions options) :
     allocator(allocator), simplifier(simplifier), options(options)
@@ -108,7 +107,6 @@ void AstFormatter::setSeparatorStat(const char* sep) {
 AstFormatter::~AstFormatter() {
     maybeDeleteVisitor(record_table_replace_visitor)
     maybeDeleteVisitor(list_table_replace_visitor)
-    maybeDeleteVisitor(lph_control_flow_visitor)
 }
 
 // static
@@ -155,7 +153,6 @@ AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, bool don
 
         createVisitor(options.record_table_replace, record_table_replace_visitor, new RecordTableReplaceVisitor(simplifier))
         createVisitor(options.list_table_replace, list_table_replace_visitor, new ListTableReplaceVisitor(simplifier))
-        createVisitor(options.lph_control_flow, lph_control_flow_visitor, new LPHControlFlowVisitor(allocator, simplifier))
 
         #undef createVisitor
         #undef maybeDeleteVisitor
