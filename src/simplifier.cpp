@@ -13,6 +13,8 @@
 #include "lua.h"
 #include "lualib.h"
 
+namespace LuauFormat {
+
 #define safeSetExpr(value) { \
     auto& _expr = value; \
     if (_expr->is<AstExprFunction>() || _expr->is<AstExprVarargs>()) \
@@ -1847,3 +1849,5 @@ RET:
 AstExpr* AstSimplifier::simplifyToExpr(AstExpr* expr, simplifyHook hook, void* hook_data) {
     return simplify(expr, hook, hook_data).toExpr();
 }
+
+}; // namespace LuauFormat

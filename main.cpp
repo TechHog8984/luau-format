@@ -7,6 +7,8 @@
 
 #include "Luau/ToString.h"
 
+using namespace LuauFormat;
+
 int tryFormatContents(Allocator& allocator, AstFormatter::FormatOptions format_options, std::string contents, FILE* output_file) {
     AstNameTable names(allocator);
 
@@ -176,12 +178,12 @@ int main(int argc, char** argv) {
 
     if (sep_stat) {
         std::string temp = parseSeparator(sep_stat);
-        sep_stat = static_cast<const char*>(malloc(sizeof(temp)));
+        sep_stat = static_cast<const char*>(malloc(temp.length() + 1));
         strcpy(const_cast<char*>(sep_stat), temp.c_str());
     }
     if (sep_block) {
         std::string temp = parseSeparator(sep_block);
-        sep_block = static_cast<const char*>(malloc(sizeof(temp)));
+        sep_block = static_cast<const char*>(malloc(temp.length() + 1));
         strcpy(const_cast<char*>(sep_block), temp.c_str());
     }
 

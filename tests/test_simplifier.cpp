@@ -3,6 +3,8 @@
 #include "test.hpp"
 #include "simplifier.hpp"
 
+using namespace LuauFormat;
+
 uint8_t testSimplifier(TestState& state) {
     uint8_t failed = 0;
 

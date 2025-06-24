@@ -3,6 +3,8 @@
 #include "test.hpp"
 #include "formatter.hpp"
 
+using namespace LuauFormat;
+
 AstArray<char> cstringToAstCharArray(const char* cstring) {
     AstArray<char> string;
     string.data = const_cast<char*>(cstring);

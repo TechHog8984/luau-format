@@ -2,6 +2,8 @@
 
 #include "cli.hpp"
 
+namespace LuauFormat {
+
 void displayHelp(const char* filename) {
     printf("luau-format by techhog\n"
         "usage: %s inputfile [options]\n\n"
@@ -23,3 +25,5 @@ void displayHelp(const char* filename) {
         "  --lph_control_flow - solves Luraph's control flow\n"
     , filename);
 }
+
+}; // namespace LuauFormat

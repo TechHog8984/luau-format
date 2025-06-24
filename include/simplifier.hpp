@@ -9,6 +9,8 @@
 
 using namespace Luau;
 
+namespace LuauFormat {
+
 AstExpr* getRootExpr(AstExpr* expr, bool safe = false);
 uint8_t isExpressionTruthy(AstExpr* expr, bool allow_globals = false);
 std::string convertNumber(double value);
@@ -198,3 +200,5 @@ private:
     std::optional<SimplifyResult> tryReplaceListTableIndex(AstExprIndexExpr* expr_index_expr, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
     std::optional<SimplifyResult> tryReplaceSimpleAnonymousFunctionCall(AstExprCall* expr_call, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
 };
+
+}; // namespace LuauFormat

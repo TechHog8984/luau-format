@@ -11,6 +11,8 @@
 
 using namespace Luau;
 
+namespace LuauFormat {
+
 template<typename T>
 AstArray<T> copy(Allocator& allocator, const T* data, size_t size)
 {
@@ -175,3 +177,5 @@ public:
 
     FormatResult formatRoot(AstStatBlock* root, bool dont_make_visitors = false);
 };
+
+}; // namespace LuauFormat

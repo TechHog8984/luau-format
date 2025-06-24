@@ -3,6 +3,8 @@
 
 #include "Luau/Ast.h"
 
+namespace LuauFormat {
+
 std::unordered_map<AstNode*, AstFormatter::NodeTag> AstFormatter::node_tag_map = {};
 
 AstStatBlock* allocateBlockFromSingleStat(Allocator& allocator, AstStat* single_stat) {
@@ -922,3 +924,5 @@ std::optional<std::string> AstFormatter::formatType(AstType* main_type) {
 }
 
 #undef appendExpr
+
+}; // namespace LuauFormat
