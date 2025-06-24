@@ -2,6 +2,7 @@
 
 #include "test.hpp"
 #include "formatter.hpp"
+#include "lualib.h"
 
 using namespace LuauFormat;
 
@@ -25,6 +26,7 @@ int main() {
     const auto location = Location();
     const auto position = location.begin; // 0, 0
 
+    lua_State* L = luaL_newstate();
     Allocator allocator;
 
     auto foo_zero_bytes_bar_vector = std::vector<char>() = { 'f', 'o', 'o', '\0', '\0', 'b', 'a', 'r' };
@@ -55,6 +57,8 @@ int main() {
     auto ast_array_string = copy(allocator, string_array_vector.data(), string_array_vector.size());
 
     TestState state{
+        .L = L,
+
         .allocator = allocator, .current_test = nullptr, .test_count = 0, .passed_count = 0, .context = "",
 
         .expr_constant_nil = allocator.alloc<AstExprConstantNil>(location),

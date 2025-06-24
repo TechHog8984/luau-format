@@ -1,4 +1,5 @@
 #include "Luau/Lexer.h"
+#include "lua.h"
 
 using namespace Luau;
 
@@ -46,6 +47,8 @@ using namespace Luau;
 AstArray<char> cstringToAstCharArray(const char* cstring);
 
 typedef struct {
+    lua_State* L;
+
     Allocator& allocator;
     const char* current_test;
     uint8_t test_count;
