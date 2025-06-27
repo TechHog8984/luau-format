@@ -3,8 +3,8 @@
 LUAU_SOURCES="dependencies/Luau/Analysis/src/*.cpp dependencies/Luau/Ast/src/*.cpp dependencies/Luau/Config/src/*.cpp dependencies/Luau/VM/src/*.cpp"
 LUAU_INCLUDE="-Idependencies/Luau/Analysis/include -Idependencies/Luau/Ast/include -Idependencies/Luau/Common/include -Idependencies/Luau/Config/include -Idependencies/Luau/VM/src -Idependencies/Luau/VM/include"
 
-LUAU_SOURCES_BUILD=$(echo $LUAU_SOURCES | sed 's/dependencies\//..\/..\/..\/dependencies\//g' -)
-LUAU_INCLUDE_BUILD=$(echo $LUAU_INCLUDE | sed 's/dependencies\//..\/..\/..\/dependencies\//g' -)
+LUAU_SOURCES_BUILD=$(echo $LUAU_SOURCES | sed 's/dependencies\//..\/..\/..\/dependencies\//g')
+LUAU_INCLUDE_BUILD=$(echo $LUAU_INCLUDE | sed 's/dependencies\//..\/..\/..\/dependencies\//g')
 
 PLATFORM=linux
 RELEASE_FLAGS=
