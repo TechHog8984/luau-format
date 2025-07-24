@@ -568,8 +568,8 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
         auto expr_list_size = expr_list.size;
 
         if (expr_list_size > 0) {
-            auto& string = string_list.data[0];
-            insertEnd(result, string.begin(), string.end());
+            auto string = fixString(string_list.data[0], '`');
+            insertEnd(result, string.data() + 1, string.data() + string.size() - 1);
             for (size_t i = 0; i < expr_list_size; i++) {
                 const auto& item = expr_list.data[i];
                 const bool item_is_table = item->is<AstExprTable>();
@@ -580,8 +580,8 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
                 if (item_is_table)
                     appendChar(result, ' ');
                 appendChar(result, '}');
-                auto& string = string_list.data[i + 1];
-                insertEnd(result, string.begin(), string.end());
+                auto string = fixString(string_list.data[i + 1], '`');
+                insertEnd(result, string.data() + 1, string.data() + string.size() - 1);
             }
         }
 

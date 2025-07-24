@@ -14,7 +14,7 @@ namespace LuauFormat {
 AstExpr* getRootExpr(AstExpr* expr, bool safe = false);
 uint8_t isExpressionTruthy(AstExpr* expr, bool allow_globals = false);
 std::string convertNumber(double value);
-std::string fixString(AstArray<char> value);
+std::string fixString(AstArray<char> value, char string_character = '"');
 bool equalsCharArray(const AstArray<char> left, const AstArray<char> right);
 int charArrayCmp(const AstArray<char> left, const AstArray<char> right);
 

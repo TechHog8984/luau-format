@@ -292,55 +292,55 @@ std::string convertNumber(double value) {
 
     return result;
 };
-std::string fixString(AstArray<char> value) {
+std::string fixString(AstArray<char> value, char string_character) {
     std::string result = "\"";
 
     for (size_t i = 0; i < value.size; i++) {
         auto& ch = value.data[i];
-        if (ch > 31 && ch < 127 && ch != '"' && ch != '\\')
+        if (ch > 31 && ch < 127 && ch != string_character && ch != '\\')
             result.append(std::string{ch});
         else {
-            switch (ch) {
-                case 7:
-                    result.append("\\a");
-                    break;
-                case 8:
-                    result.append("\\b");
-                    break;
-                case 9:
-                    result.append("\\t");
-                    break;
-                case 10:
-                    result.append("\\n");
-                    break;
-                case 11:
-                    result.append("\\v");
-                    break;
-                case 12:
-                    result.append("\\f");
-                    break;
-                case 13:
-                    result.append("\\r");
-                    break;
+            if (ch == string_character)
+                (result += '\\') += string_character;
+            else
+                switch (ch) {
+                    case 7:
+                        result.append("\\a");
+                        break;
+                    case 8:
+                        result.append("\\b");
+                        break;
+                    case 9:
+                        result.append("\\t");
+                        break;
+                    case 10:
+                        result.append("\\n");
+                        break;
+                    case 11:
+                        result.append("\\v");
+                        break;
+                    case 12:
+                        result.append("\\f");
+                        break;
+                    case 13:
+                        result.append("\\r");
+                        break;
 
-                case '"':
-                    result.append("\\\"");
-                    break;
-                case '\\':
-                    result.append("\\\\");
-                    break;
+                    case '\\':
+                        result.append("\\\\");
+                        break;
 
-                default:
-                    result.append("\\");
+                    default:
+                        result.append("\\");
 
-                    unsigned char n = (unsigned char) ch;
-                    if (n < 10)
-                        result.append("00");
-                    else if (n < 100)
-                        result.append("0");
+                        unsigned char n = (unsigned char) ch;
+                        if (n < 10)
+                            result.append("00");
+                        else if (n < 100)
+                            result.append("0");
 
-                    result.append(std::to_string((unsigned char)ch));
-            };
+                        result.append(std::to_string((unsigned char)ch));
+                };
         };
     };
 
