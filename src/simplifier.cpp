@@ -293,7 +293,8 @@ std::string convertNumber(double value) {
     return result;
 };
 std::string fixString(AstArray<char> value, char string_character) {
-    std::string result = "\"";
+    std::string result;
+    result += string_character;
 
     for (size_t i = 0; i < value.size; i++) {
         auto& ch = value.data[i];
@@ -344,7 +345,7 @@ std::string fixString(AstArray<char> value, char string_character) {
         };
     };
 
-    result.append("\"");
+    result += string_character;
 
     return result;
 };
