@@ -17,6 +17,7 @@ int tryFormatContents(Allocator& allocator, AstFormatter::FormatOptions format_o
     if (parse_errors.empty()) {
         auto result = AstFormatter::formatRoot(
             parse_result.root,
+            names,
             allocator,
             format_options
         );

@@ -46,8 +46,8 @@ AstFormatter::FormatOptions::FormatOptions(OutputType output_type, bool simplify
     assume_globals(assume_globals), record_table_replace(record_table_replace), list_table_replace(list_table_replace),
     separator_stat(separator_stat), separator_block(separator_block) {}
 
-AstFormatter::AstFormatter(Allocator& allocator, AstSimplifier& simplifier, FormatOptions options) :
-    allocator(allocator), simplifier(simplifier), options(options)
+AstFormatter::AstFormatter(AstNameTable& name_table, Allocator& allocator, AstSimplifier& simplifier, FormatOptions options) :
+    name_table(name_table), allocator(allocator), simplifier(simplifier), options(options)
 {
     switch (options.output_type) {
         case FormatOptions::Beautified:
@@ -110,10 +110,10 @@ AstFormatter::~AstFormatter() {
 }
 
 // static
-AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, Allocator& allocator, AstSimplifier& simplifier, FormatOptions options) {
-    bool disable_mismatch = options.simplify_expressions == simplifier.disabled;
-    bool lua_calls_mismatch = options.lua_calls == simplifier.simplify_lua_calls;
-    AstFormatter formatter(allocator, simplifier, options);
+AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, AstNameTable& name_table, Allocator& allocator, AstSimplifier& simplifier, FormatOptions options) {
+    const bool disable_mismatch = options.simplify_expressions == simplifier.disabled;
+    const bool lua_calls_mismatch = options.lua_calls == simplifier.simplify_lua_calls;
+    AstFormatter formatter(name_table, allocator, simplifier, options);
 
     auto result = formatter.formatRoot(root);
     if (disable_mismatch)
@@ -124,9 +124,9 @@ AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, Allocato
     return result;
 }
 // static
-AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, Allocator& allocator, FormatOptions options) {
-    AstSimplifier simplifier(allocator, true, !options.simplify_expressions, options.lua_calls, options.assume_globals);
-    AstFormatter formatter(allocator, simplifier, options);
+AstFormatter::FormatResult AstFormatter::formatRoot(AstStatBlock* root, AstNameTable& name_table, Allocator& allocator, FormatOptions options) {
+    AstSimplifier simplifier(name_table, allocator, true, !options.simplify_expressions, options.lua_calls, options.optimizations, options.assume_globals);
+    AstFormatter formatter(name_table, allocator, simplifier, options);
 
     return formatter.formatRoot(root);
 }

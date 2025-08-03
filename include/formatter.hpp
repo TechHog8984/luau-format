@@ -50,6 +50,7 @@ class RecordTableReplaceVisitor;
 class ListTableReplaceVisitor;
 
 class AstFormatter {
+    AstNameTable& name_table;
     Allocator& allocator;
     AstSimplifier& simplifier;
     std::vector<std::string> errors;
@@ -165,11 +166,11 @@ private:
 public:
     static NodeTag& getNodeTag(AstNode* node);
 
-    AstFormatter(Allocator& allocator, AstSimplifier& simplifier, FormatOptions options);
+    AstFormatter(AstNameTable& name_table, Allocator& allocator, AstSimplifier& simplifier, FormatOptions options);
     ~AstFormatter();
 
-    static FormatResult formatRoot(AstStatBlock* root, Allocator& allocator, AstSimplifier& simplifier, FormatOptions options);
-    static FormatResult formatRoot(AstStatBlock* root, Allocator& allocator, FormatOptions options);
+    static FormatResult formatRoot(AstStatBlock* root, AstNameTable& name_table, Allocator& allocator, AstSimplifier& simplifier, FormatOptions options);
+    static FormatResult formatRoot(AstStatBlock* root, AstNameTable& name_table, Allocator& allocator, FormatOptions options);
 
     FormatResult formatRoot(AstStatBlock* root, bool dont_make_visitors = false);
 };

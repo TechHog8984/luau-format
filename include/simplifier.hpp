@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <unordered_map>
+#include <variant>
 
 #include "Luau/Ast.h"
 #include "Luau/Lexer.h"
@@ -150,6 +151,7 @@ public:
 };
 
 class AstSimplifier {
+    AstNameTable& name_table;
     Allocator& allocator;
     bool safe;
 
@@ -164,12 +166,13 @@ class AstSimplifier {
 public:
     bool disabled;
     bool simplify_lua_calls;
+    bool optimizations;
     bool assume_globals;
 
     RecordTableReplaceVisitor* record_table_replace_visitor = nullptr;
     ListTableReplaceVisitor* list_table_replace_visitor = nullptr;
 
-    AstSimplifier(Allocator& allocator, bool safe = true, bool disabled = false, bool simplify_lua_calls = false, bool assume_globals = false);
+    AstSimplifier(AstNameTable& name_table, Allocator& allocator, bool safe = true, bool disabled = false, bool simplify_lua_calls = false, bool optimizations = false, bool assume_globals = false);
 
     typedef std::optional<SimplifyResult> (*simplifyHook)(AstSimplifier*, Allocator&, AstExpr*, bool, void*);
 
@@ -179,7 +182,7 @@ public:
     Allocator& getAllocator();
 
 private:
-    std::optional<double> callLuaFunction(AstArray<AstExpr*> args, const char* global, const char* global_index = nullptr, simplifyHook hook = nullptr, void* hook_data = nullptr);
+    std::variant<std::monostate, double, AstArray<char>> callLuaFunction(AstArray<AstExpr*> args, const char* global, const char* global_index, simplifyHook hook, void* hook_data);
     std::optional<SimplifyResult> tryReplaceLuaCall(AstExprCall* expr_call, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);
 
     std::optional<SimplifyResult> tryReplaceRecordTableIndex(AstExprIndexName* expr_index_name, bool group, simplifyHook hook = nullptr, void* hook_data = nullptr);

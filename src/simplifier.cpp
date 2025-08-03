@@ -3,7 +3,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <optional>
+#include <string>
 #include <unordered_map>
+#include <variant>
 
 #include "simplifier.hpp"
 #include "Luau/Lexer.h"
@@ -824,8 +826,8 @@ uint8_t SimplifyResult::isTruthy() {
     return isExpressionTruthy(toExpr(), simplifier->assume_globals);
 }
 
-AstSimplifier::AstSimplifier(Allocator& allocator, bool safe, bool disabled, bool simplify_lua_calls, bool assume_globals) :
-    allocator(allocator), safe(safe), disabled(disabled), simplify_lua_calls(simplify_lua_calls), assume_globals(assume_globals) {}
+AstSimplifier::AstSimplifier(AstNameTable& name_table, Allocator& allocator, bool safe, bool disabled, bool simplify_lua_calls, bool optimizations, bool assume_globals) :
+    name_table(name_table), allocator(allocator), safe(safe), disabled(disabled), simplify_lua_calls(simplify_lua_calls), optimizations(optimizations), assume_globals(assume_globals) {}
 
 Allocator& AstSimplifier::getAllocator() {
     return allocator;
@@ -957,14 +959,14 @@ LuaCallArgs getLuaCallArgs(const char* global, const char* global_index = "") {
     if (strcmp(global, "math") == 0 || strcmp(global, "bit32") == 0)
         return Number;
 
-    if (strcmp(global, "string") == 0 && strcmp(global_index, "unpack") == 0)
+    if (strcmp(global, "string") == 0 && (strcmp(global_index, "unpack") == 0 || strcmp(global_index, "char") == 0))
         return String;
 
     return InvalidFunction;
 }
 
-std::optional<double> AstSimplifier::callLuaFunction(AstArray<AstExpr*> args, const char* global, const char* global_index, simplifyHook hook, void* hook_data) {
-    std::optional<double> result = std::nullopt;
+std::variant<std::monostate, double, AstArray<char>> AstSimplifier::callLuaFunction(AstArray<AstExpr*> args, const char* global, const char* global_index, simplifyHook hook, void* hook_data) {
+    std::variant<std::monostate, double, AstArray<char>> result;
 
     auto lua_call_args = getLuaCallArgs(global, global_index);
     if (lua_call_args == InvalidFunction)
@@ -1010,8 +1012,13 @@ std::optional<double> AstSimplifier::callLuaFunction(AstArray<AstExpr*> args, co
     int r = lua_pcall(L, args.size, 1, 1);
 
     if (r == 0) {
-        result = lua_tonumber(L, -1);
-        lua_pop(L, 1);
+        if (lua_isnumber(L, -1))
+            result = lua_tonumber(L, -1);
+        else if (lua_isstring(L, -1)) {
+            size_t l;
+            const char* str = lua_tolstring(L, -1, &l);
+            result = copy(allocator, str, l);
+        }
     }
 
     }
@@ -1041,10 +1048,13 @@ std::optional<SimplifyResult> AstSimplifier::tryReplaceLuaCall(AstExprCall* expr
     auto index = func_expr_as_index_name->index.value;
 
     auto result = callLuaFunction(expr_call->args, global, index, hook, hook_data);
-    if (!result)
+    if (std::holds_alternative<std::monostate>(result))
         goto RET;
 
-    return SimplifyResult(this, result.value(), group);
+    if (std::holds_alternative<double>(result))
+        return SimplifyResult(this, std::get<double>(result), group);
+    else if (std::holds_alternative<AstArray<char>>(result))
+        return SimplifyResult(this, std::get<AstArray<char>>(result), group);
 
     }
 
@@ -1143,6 +1153,30 @@ std::optional<AstExprBinary::Op> inverseBinaryOp(AstExprBinary::Op op) {
             break;
     }
     return std::nullopt;
+}
+
+static constexpr unsigned alphabet_difference = 'a' - 'A';
+
+static bool isCharAlphaUnderscore(char ch) {
+    if (ch == '_') return true;
+
+    if (ch > 'Z') ch -= alphabet_difference;
+    return ch >= 'A' && ch <= 'Z';
+}
+static bool isCharDigit(char ch) {
+    return ch >= '0' && ch <= '9';
+}
+
+static bool isCharArrayClean(AstArray<char>& str) {
+    bool valid = str.size && isCharAlphaUnderscore(str.data[0]);
+    if (!valid)
+        return false;
+
+    for (auto it = str.begin(); it != str.end(); it++) {
+        if (!(isCharAlphaUnderscore(*it) || isCharDigit(*it)))
+            return false;
+    }
+    return true;
 }
 
 SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* hook_data) {
@@ -1376,6 +1410,14 @@ SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* h
         try(tryReplaceRecordTableIndex, expr_index_name)
     } else if (auto expr_index_expr = expr->as<AstExprIndexExpr>()) {
         try(tryReplaceListTableIndex, expr_index_expr)
+
+        if (optimizations) {
+            auto index_simplified = simplify(expr_index_expr->index, hook, hook_data);
+            auto index_string_optional = index_simplified.asString();
+            if (index_string_optional && isCharArrayClean(*index_string_optional))
+                // NOTE: opPosition is not accurate
+                return SimplifyResult(this, allocator.alloc<AstExprIndexName>(expr_index_expr->location, simplify(expr_index_expr->expr, hook, hook_data).toExpr(), name_table.getOrAdd(index_string_optional->data), expr_index_expr->index->location, expr_index_expr->location.end, '.'));
+        }
     }
 
     #undef try
