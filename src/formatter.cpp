@@ -544,6 +544,12 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
             close_sep = " ";
         }
 
+        if (options.output_type == FormatOptions::Minified && main_expr_as_binary->op == Luau::AstExprBinary::Sub &&
+            (main_expr_as_binary->right->is<AstExprUnary>() && main_expr_as_binary->right->as<AstExprUnary>()->op == Luau::AstExprUnary::Minus))
+        {
+            close_sep = " ";
+        }
+
         appendStr(result, std::string(open_sep).append(string).append(close_sep));
 
         appendNode(main_expr_as_binary->right, "binary->right")
