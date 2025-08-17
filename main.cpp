@@ -231,7 +231,7 @@ int main(int argc, char** argv) {
     }
 
 RET:
-    if (output_path)
+    if (output_file && output_file != stdout)
         fclose(output_file);
 
     if (sep_stat)
