@@ -448,6 +448,14 @@ public:
     }
 };
 
+bool canOmitDoEnd(AstStatBlock* main_stat) {
+    if (!main_stat->body.size)
+        return false;
+
+    auto& stat = main_stat->body.data[main_stat->body.size - 1];
+    return !(stat->is<AstStatReturn>() || stat->is<AstStatContinue>() || stat->is<AstStatBreak>());
+}
+
 std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
     std::string result;
     auto& main_tag = getNodeTag(main_expr);
@@ -673,14 +681,16 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         auto condition_is_truthy = simplifier.simplify(condition).isTruthy();
         if (options.optimizations && condition_is_truthy != 2) {
             if (condition_is_truthy) {
-                // NOTE: intentional `do end` to avoid double returns
-                // skip_indent = true;
-                // tagOneTrue(thenbody, no_do_end)
+                if (canOmitDoEnd(thenbody)) {
+                    skip_indent = true;
+                    tagOneTrue(thenbody, no_do_end)
+                }
                 appendNode(thenbody, "optimized stat_if->thenbody")
             } else if (elsebody) {
-                // NOTE: intentional `do end` to avoid double returns
-                // skip_indent = true;
-                // tagOneTrue(elsebody, no_do_end)
+                if (auto elsebody_as_block = elsebody->as<AstStatBlock>(); elsebody_as_block && canOmitDoEnd(elsebody_as_block)) {
+                    skip_indent = true;
+                    tagOneTrue(elsebody, no_do_end)
+                }
                 appendNode(elsebody, "optimized stat_if->elsebody")
             } else
                 appendComment(result, "optimized-out if statement"); // TODO: this exists because there's an indent; find a better fix (nodesimplifier will check optimizations and from there we can tag dont_format)
@@ -756,9 +766,11 @@ std::optional<std::string> AstFormatter::formatStat(AstStat* main_stat) {
         auto repeat_condition_simplified = simplifier.simplify(repeat_condition);
         if (options.optimizations && canSimplifyRepeatBody(main_stat_as_repeat, repeat_condition_simplified)) {
             // NOTE: intentional `do end`; see above if optimization
-            // skip_indent = true; // below AstStatBlock pushes indent for first stat
-            // tagOneTrue(repeat_body, no_do_end)
-            // tagOneTrue(repeat_body, skip_last_stat_separator)
+            if (canOmitDoEnd(repeat_body)) {
+                skip_indent = true; // below AstStatBlock pushes indent for first stat
+                tagOneTrue(repeat_body, no_do_end)
+                tagOneTrue(repeat_body, skip_last_stat_separator)
+            }
             appendNode(repeat_body, "stat_repeat simplified body");
         } else {
             appendStr(result, std::string("repeat").append(separators.block));
