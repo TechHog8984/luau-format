@@ -135,8 +135,12 @@ int main(int argc, char** argv) {
     bool solve_record_table = false;
     bool solve_list_table = false;
 
+    std::string input_contents;
     const char* input_path = argv[1];
     const char* output_path = nullptr;
+
+    if (!handleRecordOption("--code", input_path))
+        input_contents.assign(input_path);
 
     for (unsigned i = 2; i < (unsigned) argc; i++) {
         const char* arg = argv[i];
@@ -199,16 +203,25 @@ int main(int argc, char** argv) {
 
     Luau::Allocator allocator;
 
-    std::fstream input_file(input_path);
+    bool file_failed = false;
+    if (input_contents.empty()) {
+        std::fstream input_file(input_path);
 
-    if (input_file) {
-        std::string input_contents;
-        std::string buffer;
-        while (std::getline(input_file, buffer)) {
-            input_contents.append(buffer);
-            input_contents += '\n';
+        if (input_file) {
+            std::string buffer;
+            while (std::getline(input_file, buffer)) {
+                input_contents.append(buffer);
+                input_contents += '\n';
+            }
+        } else {
+            fprintf(stderr, "ERROR: failed to open input file '%s'\n", input_path);
+            file_failed = true;
         }
 
+        input_file.close();
+    }
+
+    if (!file_failed) {
         AstFormatter::FormatOptions format_options(
             output_type,
             !no_simplify, optimizations, lua_calls, assume_globals,
@@ -221,12 +234,7 @@ int main(int argc, char** argv) {
             input_contents,
             output_file
         );
-    } else {
-        fprintf(stderr, "ERROR: failed to open input file '%s'\n", input_path);
-        ret = 1;
     }
-
-    input_file.close();
 
     }
 

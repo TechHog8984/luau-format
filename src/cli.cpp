@@ -6,8 +6,10 @@ namespace LuauFormat {
 
 void displayHelp(const char* filename) {
     printf("luau-format by techhog\n"
-        "usage: %s inputfile [options]\n\n"
+        "usage: %s inputfile [options]\n"
+        "usage: %s --code=\"SOURCE\" [options]\n\n"
         "options:\n"
+        "  --code=source - input code to use instead of reading inputfile; must be first argument\n"
         "  --output=file - output file; default is stdout\n"
         "  --nosolve - disable AstSimplifier\n"
         "  --nosimplify - alias for --nosolve\n"
@@ -22,7 +24,7 @@ void displayHelp(const char* filename) {
         "  --luraph - all Luraph options plus --lua_calls and --optimize\n"
         "  --solve_record_table - solves Luraph's function table\n"
         "  --solve_list_table - solves Luraph's number table\n"
-    , filename);
+    , filename, filename);
 }
 
 }; // namespace LuauFormat
