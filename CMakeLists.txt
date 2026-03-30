@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 
 project(luau-format)
 
+# TODO: i have include every single file in each respective folder, but we should only include what luau-format uses
+
 set(HEADERS
     dependencies/Luau/Analysis/include/Luau/Anyification.h
     dependencies/Luau/Analysis/include/Luau/ApplyTypeFunction.h
