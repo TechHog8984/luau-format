@@ -191,13 +191,6 @@ int main(int argc, char** argv) {
     int ret = 1;
 
     FILE* output_file = stdout;
-    if (output_path) {
-        output_file = fopen(output_path, "w");
-        if (!output_file) {
-            fprintf(stderr, "ERROR: failed to open output file '%s'\n", output_path);
-            goto RET;
-        }
-    }
 
     {
 
@@ -219,6 +212,14 @@ int main(int argc, char** argv) {
         }
 
         input_file.close();
+    }
+
+    if (output_path) {
+        output_file = fopen(output_path, "w");
+        if (!output_file) {
+            fprintf(stderr, "ERROR: failed to open output file '%s'\n", output_path);
+            goto RET;
+        }
     }
 
     if (!file_failed) {
