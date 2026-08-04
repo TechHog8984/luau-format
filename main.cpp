@@ -128,6 +128,7 @@ int main(int argc, char** argv) {
     bool optimizations = false;
     bool lua_calls = false;
     bool assume_globals = false;
+    bool no_render_unicode = false;
 
     const char* sep_stat = nullptr;
     const char* sep_block = nullptr;
@@ -156,6 +157,8 @@ int main(int argc, char** argv) {
             optimizations = true;
         } else if (strcmp(arg, "--assume_globals") == 0) {
             assume_globals = true;
+        } else if (strcmp(arg, "--no_render_unicode") == 0) {
+            no_render_unicode = true;
 
         } else if (!handleRecordOption("--sep_stat", arg, true)) {
             sep_stat = arg;
@@ -226,6 +229,7 @@ int main(int argc, char** argv) {
         AstFormatter::FormatOptions format_options(
             output_type,
             !no_simplify, optimizations, lua_calls, assume_globals,
+            !no_render_unicode,
             solve_record_table, solve_list_table,
             sep_stat, sep_block
         );

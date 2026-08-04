@@ -8,10 +8,11 @@
 #include <variant>
 
 #include "simplifier.hpp"
-#include "Luau/Lexer.h"
 #include "formatter.hpp"
+#include "utf8.hpp"
 
 #include "Luau/Ast.h"
+#include "Luau/Lexer.h"
 #include "lua.h"
 #include "lualib.h"
 
@@ -294,7 +295,7 @@ std::string convertNumber(double value) {
 
     return result;
 };
-std::string fixString(AstArray<char> value, char string_character) {
+std::string fixString(AstArray<char> value, bool render_unicode, char string_character) {
     std::string result;
     result += string_character;
 
@@ -334,15 +335,50 @@ std::string fixString(AstArray<char> value, char string_character) {
                         break;
 
                     default:
-                        result.append("\\");
-
                         unsigned char n = (unsigned char) ch;
-                        if (n < 10)
-                            result.append("00");
-                        else if (n < 100)
-                            result.append("0");
 
-                        result.append(std::to_string((unsigned char)ch));
+                        size_t i0 = i;
+                        uint32_t utf8 = UTF8_REJECT;
+                        size_t utf8_count = 0;
+                        if (render_unicode) {
+                            uint32_t codepoint;
+                            size_t i1 = i0 + 1;
+                            size_t i2 = i0 + 2;
+                            size_t i3 = i0 + 3;
+
+                            size_t targeti = 0;
+                            if (n > 0xC1 && n < 0xE0 && i1 < value.size) {
+                                utf8_count = 2;
+                                targeti = i1;
+                            } else if (n > 0xDF && n < 0xF0 && i2 < value.size) {
+                                utf8_count = 3;
+                                targeti = i2;
+                            } else if (n > 0xEF && i3 < value.size) {
+                                utf8_count = 4;
+                                targeti = i3;
+                            }
+
+                            if (targeti) {
+                                utf8 = 0;
+                                for (; i <= targeti; i++)
+                                    utf8_decode(&utf8, &codepoint, static_cast<unsigned char>(value.data[i]));
+                            }
+                        }
+
+                        if (utf8 == UTF8_ACCEPT) {
+                            result.insert(result.end(), value.data + i0, value.data + i0 + utf8_count);
+                            i--;
+                        } else {
+                            i = i0;
+                            result.append("\\");
+
+                            if (n < 10)
+                                result.append("00");
+                            else if (n < 100)
+                                result.append("0");
+
+                            result.append(std::to_string((unsigned char)ch));
+                        }
                 };
         };
     };

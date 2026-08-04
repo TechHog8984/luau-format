@@ -40,10 +40,11 @@ void AstFormatter::copyNodeTag(AstNode* recipient, AstNode* reference) {
 
 AstFormatter::FormatOptions::FormatOptions(OutputType output_type, bool simplify_expressions,
     bool optimizations, bool lua_calls, bool assume_globals,
+    bool render_unicode,
     bool record_table_replace, bool list_table_replace,
     const char* separator_stat, const char* separator_block) :
     output_type(output_type), simplify_expressions(simplify_expressions), optimizations(optimizations), lua_calls(lua_calls),
-    assume_globals(assume_globals), record_table_replace(record_table_replace), list_table_replace(list_table_replace),
+    assume_globals(assume_globals), render_unicode(render_unicode), record_table_replace(record_table_replace), list_table_replace(list_table_replace),
     separator_stat(separator_stat), separator_block(separator_block) {}
 
 AstFormatter::AstFormatter(AstNameTable& name_table, Allocator& allocator, AstSimplifier& simplifier, FormatOptions options) :
@@ -476,7 +477,7 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
     } else if (auto main_expr_as_constant_number = main_expr->as<AstExprConstantNumber>()) {
         appendStr(result, convertNumber(main_expr_as_constant_number->value));
     } else if (auto main_expr_as_constant_string = main_expr->as<AstExprConstantString>()) {
-        appendStr(result, fixString(main_expr_as_constant_string->value));
+        appendStr(result, fixString(main_expr_as_constant_string->value, options.render_unicode));
     } else if (auto main_expr_as_local = main_expr->as<AstExprLocal>()) {
         appendStr(result, main_expr_as_local->local->name.value);
     } else if (auto main_expr_as_global = main_expr->as<AstExprGlobal>()) {
@@ -582,7 +583,7 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
         auto expr_list_size = expr_list.size;
 
         if (expr_list_size > 0) {
-            auto string = fixString(string_list.data[0], '`');
+            auto string = fixString(string_list.data[0], options.render_unicode, '`');
             insertEnd(result, string.data() + 1, string.data() + string.size() - 1);
             for (size_t i = 0; i < expr_list_size; i++) {
                 const auto& item = expr_list.data[i];
@@ -594,7 +595,7 @@ std::optional<std::string> AstFormatter::formatExpr(AstExpr* main_expr) {
                 if (item_is_table)
                     appendChar(result, ' ');
                 appendChar(result, '}');
-                auto string = fixString(string_list.data[i + 1], '`');
+                auto string = fixString(string_list.data[i + 1], options.render_unicode, '`');
                 insertEnd(result, string.data() + 1, string.data() + string.size() - 1);
             }
         }

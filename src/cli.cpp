@@ -17,6 +17,7 @@ void displayHelp(const char* filename) {
         "  --optimize - various optimizations (such as `if true`)\n"
         "  --lua_calls - solve lua calls such as math.max(1, 4)\n"
         "  --assume_globals - assume that all luau globals as well as libraries and their respective functions are always available\n"
+        "  --no_render_unicode - don't render unicode characters in strings\n"
         "\n"
         "  --sep_stat=[sep]\n"
         "  --sep_block=[sep]\n"
