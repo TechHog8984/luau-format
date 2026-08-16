@@ -989,9 +989,17 @@ std::optional<size_t> AstSimplifier::getTableSize(AstExprTable* table) {
 enum LuaCallArgs {
     InvalidFunction,
     Number,
-    String
+    String,
+    NumberOrString
 };
-LuaCallArgs getLuaCallArgs(const char* global, const char* global_index = "") {
+LuaCallArgs getLuaCallArgs(const char* global, const char* global_index) {
+    if (global_index == nullptr) {
+        if (strcmp(global, "tonumber") == 0 || strcmp(global, "tostring") == 0)
+            return NumberOrString;
+
+        return InvalidFunction;
+    }
+
     if (strcmp(global, "math") == 0 || strcmp(global, "bit32") == 0)
         return Number;
 
@@ -1027,20 +1035,23 @@ std::variant<std::monostate, double, AstArray<char>> AstSimplifier::callLuaFunct
         SimplifyResult arg_simplified = simplify(arg, hook, hook_data);
         auto arg_as_number = arg_simplified.asNumber();
         auto arg_as_string = arg_simplified.asString();
-        switch (lua_call_args) {
-            case InvalidFunction:
-                break;
-            case Number:
-                if (!arg_as_number)
-                    goto RET;
+
+        if (arg_as_number) {
+            if (lua_call_args == Number || lua_call_args == NumberOrString) {
                 lua_pushnumber(L, arg_as_number.value());
-                break;
-            case String:
-                if (!arg_as_string)
-                    goto RET;
-                lua_pushlstring(L, arg_as_string->data, arg_as_string->size);
-                break;
+                continue;
+            }
+            goto RET;
         }
+        if (arg_as_string) {
+            if (lua_call_args == String || lua_call_args == NumberOrString) {
+                lua_pushlstring(L, arg_as_string->data, arg_as_string->size);
+                continue;
+            }
+            goto RET;
+        }
+
+        goto RET;
     }
 
     {
@@ -1072,16 +1083,20 @@ std::optional<SimplifyResult> AstSimplifier::tryReplaceLuaCall(AstExprCall* expr
 
     {
 
-    auto func_expr_as_index_name = simplifyToExpr(expr_call->func)->as<AstExprIndexName>();
-    if (!func_expr_as_index_name)
-        goto RET;
+    const char* global = nullptr;
+    const char* index = nullptr;
 
-    auto expr_as_global = getRootExpr(func_expr_as_index_name->expr)->as<AstExprGlobal>();
-    if (!expr_as_global)
-        goto RET;
+    if (auto func_expr_as_index_name = simplifyToExpr(expr_call->func)->as<AstExprIndexName>()) {
+        auto expr_as_global = getRootExpr(func_expr_as_index_name->expr)->as<AstExprGlobal>();
+        if (!expr_as_global)
+            goto RET;
 
-    auto global = expr_as_global->name.value;
-    auto index = func_expr_as_index_name->index.value;
+        global = expr_as_global->name.value;
+        index = func_expr_as_index_name->index.value;
+    } else if (auto func_as_global = simplifyToExpr(expr_call->func)->as<AstExprGlobal>())
+        global = func_as_global->name.value;
+    else
+        goto RET;
 
     auto result = callLuaFunction(expr_call->args, global, index, hook, hook_data);
     if (std::holds_alternative<std::monostate>(result))
