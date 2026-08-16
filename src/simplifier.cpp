@@ -1059,9 +1059,9 @@ std::variant<std::monostate, double, AstArray<char>> AstSimplifier::callLuaFunct
     int r = lua_pcall(L, args.size, 1, 1);
 
     if (r == 0) {
-        if (lua_isnumber(L, -1))
+        if (lua_type(L, -1) == LUA_TNUMBER)
             result = lua_tonumber(L, -1);
-        else if (lua_isstring(L, -1)) {
+        else if (lua_type(L, -1) == LUA_TSTRING) {
             size_t l;
             const char* str = lua_tolstring(L, -1, &l);
             result = copy(allocator, str, l);
