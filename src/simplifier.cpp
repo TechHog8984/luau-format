@@ -1230,6 +1230,14 @@ static bool isCharArrayClean(AstArray<char>& str) {
     return true;
 }
 
+static bool canExprPrecedeIndexName(AstExpr* expr) {
+    return expr->is<AstExprGroup>() || expr->is<AstExprConstantNil>() ||
+        expr->is<AstExprConstantBool>() || expr->is<AstExprConstantNumber>() ||
+        expr->is<AstExprLocal>() || expr->is<AstExprGlobal>() ||
+        expr->is<AstExprCall>() || expr->is<AstExprIndexName>() ||
+        expr->is<AstExprIndexExpr>();
+}
+
 SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* hook_data) {
     bool group = expr->is<AstExprGroup>();
 
@@ -1465,9 +1473,13 @@ SimplifyResult AstSimplifier::simplify(AstExpr* expr, simplifyHook hook, void* h
         if (optimizations) {
             auto index_simplified = simplify(expr_index_expr->index, hook, hook_data);
             auto index_string_optional = index_simplified.asString();
-            if (index_string_optional && isCharArrayClean(*index_string_optional))
+            if (index_string_optional && isCharArrayClean(*index_string_optional)) {
+                auto expr_expr = simplify(expr_index_expr->expr, hook, hook_data).toExpr();
+                if (!canExprPrecedeIndexName(expr_expr))
+                    expr_expr = allocator.alloc<AstExprGroup>(expr_expr->location, expr_expr);
                 // NOTE: opPosition is not accurate
-                return SimplifyResult(this, allocator.alloc<AstExprIndexName>(expr_index_expr->location, simplify(expr_index_expr->expr, hook, hook_data).toExpr(), name_table.getOrAdd(index_string_optional->data), expr_index_expr->index->location, expr_index_expr->location.end, '.'));
+                return SimplifyResult(this, allocator.alloc<AstExprIndexName>(expr_index_expr->location, expr_expr, name_table.getOrAdd(index_string_optional->data), expr_index_expr->index->location, expr_index_expr->location.end, '.'));
+            }
         }
     }
 
