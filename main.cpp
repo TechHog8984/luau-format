@@ -9,7 +9,7 @@
 
 using namespace LuauFormat;
 
-int tryFormatContents(Allocator& allocator, AstFormatter::FormatOptions format_options, std::string contents, FILE* output_file) {
+int tryFormatContents(Allocator& allocator, AstFormatter::FormatOptions format_options, std::string contents, std::string& output) {
     AstNameTable names(allocator);
 
     ParseResult parse_result = Parser::parse(contents.c_str(), contents.size(), names, allocator);
@@ -22,9 +22,7 @@ int tryFormatContents(Allocator& allocator, AstFormatter::FormatOptions format_o
             format_options
         );
 
-        fprintf(output_file, "%s", result.formatted.c_str());
-        if (output_file == stdout)
-            puts("");
+        output = std::move(result.formatted);
 
         auto& errors = result.errors;
         if (!errors.empty()) {
@@ -59,16 +57,16 @@ int handleRecordOption(const char* option, const char*& arg, bool can_be_empty =
 
     if (strlen(arg) == option_length || arg[option_length] != '=') {
         fprintf(stderr, "ERROR: %s expects an equals sign\n", option);
-        return 1;
+        exit(1);
     } else if (!can_be_empty && strlen(arg) < option_length + 2) {
         fprintf(stderr, "ERROR: %s expects a value after the equals sign\n", option);
-        return 1;
+        exit(1);
     }
 
     arg += option_length + 1;
     return 0;
 }
-std::string parseSeparator(const char*& sep) {
+std::string parseSeparator(const char* sep) {
     std::string result;
 
     for (size_t i = 0; i < strlen(sep); i++) {
@@ -130,127 +128,124 @@ int main(int argc, char** argv) {
     bool assume_globals = false;
     bool no_render_unicode = false;
 
-    const char* sep_stat = nullptr;
-    const char* sep_block = nullptr;
+    bool has_sep_stat = false;
+    bool has_sep_block = false;
+    std::string sep_stat;
+    std::string sep_block;
 
     bool solve_record_table = false;
     bool solve_list_table = false;
 
-    std::string input_contents;
-    const char* input_path = argv[1];
+    int input_path_argc = 0;
     const char* output_path = nullptr;
 
-    if (!handleRecordOption("--code", input_path))
-        input_contents.assign(input_path);
+    std::string input_contents;
 
-    for (unsigned i = 2; i < (unsigned) argc; i++) {
+    for (unsigned i = 1; i < (unsigned) argc; i++) {
         const char* arg = argv[i];
-        if (!handleRecordOption("--output", arg)) {
-            output_path = arg;
-        } else if (strcmp(arg, "--nosolve") == 0 || strcmp(arg, "--nosimplify") == 0) {
-            no_simplify = true;
-        } else if (strcmp(arg, "--minify") == 0) {
-            output_type = AstFormatter::FormatOptions::Minified;
-        } else if (strcmp(arg, "--lua_calls") == 0) {
-            lua_calls = true;
-        } else if (strcmp(arg, "--optimize") == 0) {
-            optimizations = true;
-        } else if (strcmp(arg, "--assume_globals") == 0) {
-            assume_globals = true;
-        } else if (strcmp(arg, "--no_render_unicode") == 0) {
-            no_render_unicode = true;
+        if (arg[0] == '-') {
+            if (!handleRecordOption("--code", arg))
+                input_contents.assign(arg);
+            else if (!handleRecordOption("--output", arg))
+                output_path = arg;
+            else if (strcmp(arg, "--nosolve") == 0 || strcmp(arg, "--nosimplify") == 0)
+                no_simplify = true;
+            else if (strcmp(arg, "--minify") == 0)
+                output_type = AstFormatter::FormatOptions::Minified;
+            else if (strcmp(arg, "--lua_calls") == 0)
+                lua_calls = true;
+            else if (strcmp(arg, "--optimize") == 0)
+                optimizations = true;
+            else if (strcmp(arg, "--assume_globals") == 0)
+                assume_globals = true;
+            else if (strcmp(arg, "--no_render_unicode") == 0)
+                no_render_unicode = true;
 
-        } else if (!handleRecordOption("--sep_stat", arg, true)) {
-            sep_stat = arg;
-        } else if (!handleRecordOption("--sep_block", arg, true)) {
-            sep_block = arg;
+            else if (!handleRecordOption("--sep_stat", arg, true)) {
+                sep_stat = arg;
+                has_sep_stat = true;
+            } else if (!handleRecordOption("--sep_block", arg, true)) {
+                sep_block = arg;
+                has_sep_block = true;
 
-        } else if (strcmp(arg, "--luraph") == 0) {
-            solve_record_table = true;
-            solve_list_table = true;
-            optimizations = true;
-            lua_calls = true;
-        } else if (strcmp(arg, "--solve_record_table") == 0) {
-            solve_record_table = true;
-        } else if (strcmp(arg, "--solve_list_table") == 0) {
-            solve_list_table = true;
-        } else {
-            fprintf(stderr, "ERROR: unrecognized option '%s'\n", arg);
-            return 1;
-        }
+            } else if (strcmp(arg, "--luraph") == 0) {
+                solve_record_table = true;
+                solve_list_table = true;
+                optimizations = true;
+                lua_calls = true;
+            } else if (strcmp(arg, "--solve_record_table") == 0)
+                solve_record_table = true;
+            else if (strcmp(arg, "--solve_list_table") == 0)
+                solve_list_table = true;
+            else
+                goto INVALID_ARG;
+        } else if (input_path_argc)
+            goto INVALID_ARG;
+        else
+            input_path_argc = i;
+
+        continue;
+
+        INVALID_ARG:
+        fprintf(stderr, "ERROR: unrecognized option '%s'; run with no arguments for help (or use --help)\n", arg);
+        exit(1);
     }
 
-    if (sep_stat) {
-        std::string temp = parseSeparator(sep_stat);
-        sep_stat = static_cast<const char*>(malloc(temp.length() + 1));
-        strcpy(const_cast<char*>(sep_stat), temp.c_str());
-    }
-    if (sep_block) {
-        std::string temp = parseSeparator(sep_block);
-        sep_block = static_cast<const char*>(malloc(temp.length() + 1));
-        strcpy(const_cast<char*>(sep_block), temp.c_str());
-    }
+    if (has_sep_stat)
+        sep_stat = parseSeparator(sep_stat.c_str());
+    if (has_sep_block)
+        sep_block = parseSeparator(sep_block.c_str());
 
-    int ret = 1;
+    std::string output;
 
-    FILE* output_file = stdout;
-
-    {
-
-    Luau::Allocator allocator;
-
-    bool file_failed = false;
     if (input_contents.empty()) {
-        std::fstream input_file(input_path);
+        if (input_path_argc) {
+            const char* input_path = argv[input_path_argc];
+            std::fstream input_file(input_path);
 
-        if (input_file) {
-            std::string buffer;
-            while (std::getline(input_file, buffer)) {
-                input_contents.append(buffer);
-                input_contents += '\n';
+            if (input_file) {
+                std::string buffer;
+                while (std::getline(input_file, buffer)) {
+                    input_contents.append(buffer);
+                    input_contents += '\n';
+                }
+                input_file.close();
+            } else {
+                fprintf(stderr, "ERROR: failed to open input file '%s'\n", input_path);
+                exit(1);
             }
         } else {
-            fprintf(stderr, "ERROR: failed to open input file '%s'\n", input_path);
-            file_failed = true;
-        }
-
-        input_file.close();
-    }
-
-    if (output_path) {
-        output_file = fopen(output_path, "w");
-        if (!output_file) {
-            fprintf(stderr, "ERROR: failed to open output file '%s'\n", output_path);
-            goto RET;
+            fprintf(stderr, "ERROR: you must pass either an input file or --code=...\n");
+            exit(1);
         }
     }
 
-    if (!file_failed) {
-        AstFormatter::FormatOptions format_options(
-            output_type,
-            !no_simplify, optimizations, lua_calls, assume_globals,
-            !no_render_unicode,
-            solve_record_table, solve_list_table,
-            sep_stat, sep_block
-        );
-        ret = tryFormatContents(
-            allocator,
-            format_options,
-            input_contents,
-            output_file
-        );
+    AstFormatter::FormatOptions format_options(
+        output_type,
+        !no_simplify, optimizations, lua_calls, assume_globals,
+        !no_render_unicode,
+        solve_record_table, solve_list_table,
+        has_sep_stat ? sep_stat.c_str() : nullptr, has_sep_block ? sep_block.c_str() : nullptr
+    );
+    Luau::Allocator allocator{};
+    int ret = tryFormatContents(
+        allocator,
+        format_options,
+        input_contents,
+        output
+    );
+
+    if (!ret) {
+        if (output_path) {
+            std::ofstream output_file(output_path);
+            if (!output_file) {
+                fprintf(stderr, "ERROR: failed to open output file '%s'\n", output_path);
+                exit(1);
+            }
+            output_file << output;
+        } else
+            printf("%.*s\n", (int) output.size(), output.c_str());
     }
-
-    }
-
-RET:
-    if (output_file && output_file != stdout)
-        fclose(output_file);
-
-    if (sep_stat)
-        free((void*) sep_stat);
-    if (sep_block)
-        free((void*) sep_block);
 
     return ret;
 }
